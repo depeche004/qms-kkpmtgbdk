@@ -1,0 +1,1970 @@
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>QMS Farmasi | KK Permatang Badak, PKD Kuantan</title>
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- Font Awesome 6 Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Google Fonts: Plus Jakarta Sans & Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <!-- Chart.js CDN for KPI Analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <!-- Firebase SDK v10 Modular Import via ES Modules -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+        window.FirebaseModule = {
+            initializeApp,
+            getFirestore,
+            doc,
+            setDoc,
+            onSnapshot
+        };
+    </script>
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pastel: {
+                            blue: '#b0e0e6',
+                            sky: '#7dd3fc',
+                            ice: '#e0f2fe',
+                            deepblue: '#0284c7',
+                            lavender: '#e2d4f8',
+                            pink: '#fbcfe8',
+                            mint: '#c7d2fe',
+                            dark: '#0f172a'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Living Dynamic Pastel Blue Ambient Mesh Gradient */
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f0f9ff;
+            background: linear-gradient(125deg, #e0f2fe, #bae6fd, #e0e7ff, #fbcfe8, #dbeafe);
+            background-size: 300% 300%;
+            animation: meshMove 18s ease-in-out infinite alternate;
+            min-height: 100vh;
+        }
+
+        @keyframes meshMove {
+            0% {
+                background-position: 0% 50%;
+            }
+            50% {
+                background-position: 100% 50%;
+            }
+            100% {
+                background-position: 0% 50%;
+            }
+        }
+
+        .glass-card {
+            background: rgba(255, 255, 255, 0.82);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1px solid rgba(255, 255, 255, 0.95);
+            box-shadow: 0 16px 36px -4px rgba(14, 165, 233, 0.08), 0 4px 16px -2px rgba(186, 230, 253, 0.15);
+        }
+
+        .pastel-gradient-text {
+            background: linear-gradient(135deg, #0284c7 0%, #4338ca 50%, #db2777 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .pastel-btn {
+            background: linear-gradient(135deg, #38bdf8 0%, #6366f1 50%, #ec4899 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pastel-btn:hover {
+            box-shadow: 0 10px 25px -5px rgba(56, 189, 248, 0.45);
+            transform: translateY(-1.5px);
+        }
+
+        .tab-btn {
+            position: relative;
+            transition: all 0.2s ease;
+        }
+        .tab-btn.active {
+            color: #0369a1;
+            font-weight: 800;
+        }
+        .tab-btn.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 15%;
+            width: 70%;
+            height: 3.5px;
+            background: linear-gradient(90deg, #38bdf8, #818cf8, #f472b6);
+            border-radius: 9999px;
+        }
+
+        @keyframes soft-glow-blue {
+            0%, 100% { box-shadow: 0 0 25px rgba(56, 189, 248, 0.35); }
+            50% { box-shadow: 0 0 40px rgba(99, 102, 241, 0.55); }
+        }
+        .animate-soft-glow {
+            animation: soft-glow-blue 3s infinite ease-in-out;
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: rgba(224, 242, 254, 0.4); }
+        ::-webkit-scrollbar-thumb { background: #38bdf8; border-radius: 9999px; }
+        ::-webkit-scrollbar-thumb:hover { background: #0284c7; }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col justify-between antialiased selection:bg-sky-200">
+
+    <header class="sticky top-0 z-40 bg-white/75 backdrop-blur-md border-b border-sky-200/60 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-col md:flex-row justify-between items-center gap-3">
+            
+            <div class="flex items-center space-x-3.5 text-center md:text-left">
+                <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-sky-400 via-indigo-400 to-pink-400 p-0.5 shadow-md flex items-center justify-center">
+                    <div class="w-full h-full bg-white/90 rounded-[14px] flex items-center justify-center">
+                        <i class="fa-solid fa-hospital text-2xl pastel-gradient-text"></i>
+                    </div>
+                </div>
+                <div>
+                    <div class="flex items-center justify-center md:justify-start gap-2">
+                        <h1 class="text-lg sm:text-xl font-black font-display tracking-tight text-slate-900 leading-tight">
+                            Unit Farmasi <span class="pastel-gradient-text">KK Permatang Badak</span>
+                        </h1>
+                        <span class="bg-sky-100 text-sky-800 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full border border-sky-200 uppercase tracking-wider">
+                            QMS v3.4 Pro
+                        </span>
+                    </div>
+                    <p class="text-xs font-semibold text-slate-600">
+                        Pejabat Kesihatan Daerah Kuantan — Dispensing & Queue System
+                    </p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3 flex-wrap justify-center">
+                <!-- Sync Badge -->
+                <div id="syncBadge" onclick="switchTab('settings')" class="cursor-pointer bg-white/90 hover:bg-white px-3.5 py-1.5 rounded-2xl border border-sky-200 shadow-sm flex items-center gap-2 text-xs text-slate-700 transition">
+                    <span id="syncDot" class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping"></span>
+                    <span id="syncText" class="font-bold text-slate-700">Firebase Live Sync</span>
+                </div>
+
+                <!-- Clock Box -->
+                <div class="bg-slate-900/10 px-3.5 py-1 rounded-2xl border border-sky-200 backdrop-blur-sm text-center md:text-right">
+                    <div id="liveClock" class="text-sm font-black font-mono tracking-wider pastel-gradient-text">00:00:00 AM</div>
+                    <div id="liveDate" class="text-[10px] font-bold text-slate-700">Ahad, 4 Okt 2026</div>
+                </div>
+
+                <button onclick="toggleSound()" id="soundToggleBtn" title="Togol Bunyi Suara Panggilan" class="p-2.5 rounded-2xl bg-white hover:bg-sky-50 text-sky-600 border border-sky-200 shadow-sm transition">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-base"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Navigation Tabs -->
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 border-t border-sky-100 flex overflow-x-auto space-x-1 sm:space-x-4 text-xs font-bold text-slate-600">
+            <button onclick="switchTab('dashboard')" id="tab-dashboard" class="tab-btn active py-3 px-3 flex items-center gap-2 whitespace-nowrap hover:text-sky-700 transition">
+                <i class="fa-solid fa-desktop text-sky-500"></i> Panggilan Kaunter
+            </button>
+            <button onclick="switchTab('issue')" id="tab-issue" class="tab-btn py-3 px-3 flex items-center gap-2 whitespace-nowrap hover:text-sky-700 transition">
+                <i class="fa-solid fa-ticket text-pink-500"></i> Pendaftaran Tiket
+            </button>
+            <button onclick="switchTab('display')" id="tab-display" class="tab-btn py-3 px-3 flex items-center gap-2 whitespace-nowrap hover:text-sky-700 transition">
+                <i class="fa-solid fa-tv text-indigo-500"></i> Paparan TV
+            </button>
+            <button onclick="switchTab('analytics')" id="tab-analytics" class="tab-btn py-3 px-3 flex items-center gap-2 whitespace-nowrap hover:text-sky-700 transition">
+                <i class="fa-solid fa-chart-pie text-emerald-500"></i> Laporan KPI (< 30 min)
+            </button>
+            <button onclick="switchTab('settings')" id="tab-settings" class="tab-btn py-3 px-3 flex items-center gap-2 whitespace-nowrap hover:text-sky-700 transition">
+                <i class="fa-solid fa-lock text-rose-500"></i> Tetapan & Cloud
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex-grow w-full space-y-6">
+
+        <section class="grid grid-cols-2 md:grid-cols-5 gap-3 sm:gap-4">
+            <div class="glass-card p-4 rounded-3xl flex flex-col justify-between">
+                <div class="flex items-center justify-between text-slate-500 mb-1">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-slate-600">Jumlah Tiket</span>
+                    <div class="p-2 bg-sky-100 text-sky-600 rounded-2xl">
+                        <i class="fa-solid fa-ticket text-sm"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black font-display text-slate-800" id="statTotalTickets">0</div>
+                <div class="text-[10px] font-semibold text-slate-500">Hari ini</div>
+            </div>
+
+            <div class="glass-card p-4 rounded-3xl flex flex-col justify-between">
+                <div class="flex items-center justify-between text-slate-500 mb-1">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-amber-900">Dalam Barisan</span>
+                    <div class="p-2 bg-amber-100 text-amber-600 rounded-2xl">
+                        <i class="fa-solid fa-hourglass-half text-sm"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black font-display text-amber-600" id="statWaiting">0</div>
+                <div class="text-[10px] font-semibold text-amber-700">Menunggu Dipanggil</div>
+            </div>
+
+            <div class="glass-card p-4 rounded-3xl flex flex-col justify-between">
+                <div class="flex items-center justify-between text-slate-500 mb-1">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-sky-900">Sedang Dipanggil</span>
+                    <div class="p-2 bg-sky-100 text-sky-600 rounded-2xl">
+                        <i class="fa-solid fa-bullhorn text-sm"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black font-display text-sky-600" id="statDispensing">0</div>
+                <div class="text-[10px] font-semibold text-sky-700">Di Kaunter Dispensari</div>
+            </div>
+
+            <div class="glass-card p-4 rounded-3xl flex flex-col justify-between">
+                <div class="flex items-center justify-between text-slate-500 mb-1">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-emerald-900">Selesai Ubat</span>
+                    <div class="p-2 bg-emerald-100 text-emerald-600 rounded-2xl">
+                        <i class="fa-solid fa-circle-check text-sm"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black font-display text-emerald-600" id="statCompleted">0</div>
+                <div class="text-[10px] font-semibold text-emerald-700">Pesakit Dispensed</div>
+            </div>
+
+            <div class="glass-card p-4 rounded-3xl flex flex-col justify-between col-span-2 md:col-span-1">
+                <div class="flex items-center justify-between text-slate-500 mb-1">
+                    <span class="text-[10px] font-black uppercase tracking-wider text-pink-900">Purata Menunggu</span>
+                    <div class="p-2 bg-pink-100 text-pink-600 rounded-2xl">
+                        <i class="fa-solid fa-stopwatch text-sm"></i>
+                    </div>
+                </div>
+                <div class="text-2xl sm:text-3xl font-black font-display text-pink-700" id="statAvgWait">0 <span class="text-xs font-normal text-slate-500">min</span></div>
+                <div class="text-[10px] font-black mt-1" id="kpiStatusBadge">KPI KKM: &lt; 30 min</div>
+            </div>
+        </section>
+
+        <section id="sec-dashboard" class="tab-content space-y-6">
+            
+            <div class="glass-card p-4 rounded-3xl flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                <div class="flex items-center gap-3">
+                    <div class="p-3 bg-sky-600 text-white rounded-2xl font-black text-sm shadow-md">
+                        <i class="fa-solid fa-desktop"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-sm font-black text-slate-900 uppercase tracking-wide">Pilih Kaunter Bertugas Anda</h2>
+                        <p class="text-xs text-slate-500">Anda sedang mengawal panggilan ubat untuk kaunter ini</p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-2 w-full sm:w-auto overflow-x-auto" id="activeCounterSelectorContainer">
+                    <!-- Dynamic Counter Buttons Injected Here -->
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                <!-- Main Calling Screen -->
+                <div class="lg:col-span-7 space-y-6">
+                    <div class="glass-card rounded-3xl p-6 sm:p-7 space-y-6 relative overflow-hidden">
+                        
+                        <div class="flex justify-between items-center pb-4 border-b border-sky-100">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-2xl bg-gradient-to-r from-sky-400 to-indigo-500 text-white font-black font-display flex items-center justify-center text-lg shadow-md" id="selectedCounterBadge">
+                                    K1
+                                </div>
+                                <div>
+                                    <h3 class="font-black text-slate-900 text-base" id="selectedCounterTitle">KAUNTER 1</h3>
+                                    <p class="text-xs text-slate-500">Kawalan Panggilan & Pembekalan Ubat</p>
+                                </div>
+                            </div>
+
+                            <span class="px-3 py-1 bg-emerald-100 text-emerald-800 text-xs font-black rounded-full border border-emerald-200 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-emerald-500 animate-ping"></span> Aktif
+                            </span>
+                        </div>
+
+                        <!-- Active Serving Ticket -->
+                        <div class="bg-slate-950 text-white rounded-3xl p-6 sm:p-8 shadow-2xl relative overflow-hidden border border-slate-800">
+                            <div class="absolute -right-8 -bottom-8 opacity-10 text-sky-400">
+                                <i class="fa-solid fa-prescription-bottle-medical text-[200px]"></i>
+                            </div>
+
+                            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 relative z-10">
+                                <div>
+                                    <span class="inline-block px-3 py-1 bg-sky-500/20 text-sky-300 border border-sky-500/30 text-[11px] font-bold rounded-full mb-3">
+                                        <i class="fa-solid fa-bullhorn"></i> SEDANG DIPANGGIL
+                                    </span>
+                                    <div class="text-6xl sm:text-7xl font-black font-mono tracking-tight text-white mb-2" id="currentNumDisplay">---</div>
+                                    <div class="text-xl font-black text-sky-200 uppercase tracking-wide mb-1" id="currentPatientName">Pesakit: -</div>
+                                    <div class="text-xs text-slate-400 flex items-center gap-2">
+                                        <span id="currentCategoryDisplay" class="font-semibold text-slate-300">Tiada Tiket</span>
+                                        <span>•</span>
+                                        <span id="currentRnDisplay" class="text-slate-400 italic">RN: -</span>
+                                    </div>
+                                </div>
+
+                                <!-- Live Timers -->
+                                <div class="bg-white/10 backdrop-blur-md rounded-2xl p-4 border border-white/15 min-w-[200px] text-center w-full sm:w-auto">
+                                    <div class="mb-3">
+                                        <div class="text-[10px] text-sky-200 uppercase tracking-wider font-bold">Masa Menunggu Giliran</div>
+                                        <div class="text-2xl font-black font-mono text-amber-300" id="liveWaitTimer">00:00</div>
+                                    </div>
+                                    <div class="pt-2 border-t border-white/10">
+                                        <div class="text-[10px] text-sky-200 uppercase tracking-wider font-bold">Masa Dispensing Ubat</div>
+                                        <div class="text-3xl font-black font-mono text-emerald-400" id="liveDispenseTimer">00:00</div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Pharmacist Action Buttons -->
+                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-slate-800">
+                                <button onclick="actionCallNext()" class="col-span-2 sm:col-span-1 pastel-btn text-white font-black py-3.5 px-4 rounded-2xl shadow-lg transition flex items-center justify-center gap-2 text-sm">
+                                    <i class="fa-solid fa-bell"></i> Panggil Seterusnya
+                                </button>
+                                <button onclick="actionRecallCurrent()" id="btnRecall" disabled class="disabled:opacity-40 bg-sky-600 hover:bg-sky-500 text-white font-bold py-3 px-3 rounded-2xl shadow transition flex items-center justify-center gap-1.5 text-xs sm:text-sm">
+                                    <i class="fa-solid fa-rotate-right"></i> Panggil Semula
+                                </button>
+                                <button onclick="actionCompleteCurrent()" id="btnComplete" disabled class="disabled:opacity-40 bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-3 px-3 rounded-2xl shadow transition flex items-center justify-center gap-1.5 text-xs sm:text-sm">
+                                    <i class="fa-solid fa-circle-check"></i> Selesai
+                                </button>
+                                <button onclick="actionNoShowCurrent()" id="btnNoShow" disabled class="disabled:opacity-40 bg-rose-600 hover:bg-rose-500 text-white font-bold py-3 px-3 rounded-2xl shadow transition flex items-center justify-center gap-1.5 text-xs sm:text-sm">
+                                    <i class="fa-solid fa-user-slash"></i> Batal / Tidak Hadir
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Call Priority Toggle -->
+                        <div class="flex flex-wrap items-center justify-between gap-3 text-xs text-slate-600 bg-white/60 p-4 rounded-2xl border border-sky-100">
+                            <span class="font-extrabold flex items-center gap-2 text-slate-800">
+                                <i class="fa-solid fa-sliders text-sky-600"></i> Mode Panggilan Giliran:
+                            </span>
+                            <div class="flex items-center gap-4">
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="callMode" value="priority" checked onchange="updateCallMode(this.value)" class="text-sky-600 focus:ring-sky-500">
+                                    <span class="ml-2 font-bold text-slate-700">Utamakan Warga Emas/OKU (Kat B)</span>
+                                </label>
+                                <label class="inline-flex items-center cursor-pointer">
+                                    <input type="radio" name="callMode" value="fifo" onchange="updateCallMode(this.value)" class="text-sky-600 focus:ring-sky-500">
+                                    <span class="ml-2 font-bold text-slate-700">Ikut Urutan Masa (FIFO)</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Live Waiting Queue -->
+                <div class="lg:col-span-5 glass-card rounded-3xl p-6 flex flex-col justify-between h-[590px]">
+                    <div>
+                        <div class="flex justify-between items-center mb-4 pb-3 border-b border-sky-100">
+                            <div>
+                                <h3 class="font-black text-slate-900 text-base flex items-center gap-2">
+                                    <i class="fa-solid fa-list-ol text-sky-600"></i> Senarai Menunggu (Semua Kaunter)
+                                </h3>
+                                <p class="text-xs text-slate-500">Kod warna penunjuk masa KPI (< 30 min)</p>
+                            </div>
+                            <span class="bg-sky-100 text-sky-900 font-extrabold text-xs px-3 py-1 rounded-full border border-sky-200" id="waitingCountBadge">0 Tiket</span>
+                        </div>
+
+                        <div class="overflow-y-auto max-h-[440px] space-y-2.5 pr-1" id="waitingQueueList">
+                            <!-- Injected dynamically -->
+                        </div>
+                    </div>
+
+                    <div class="pt-3 border-t border-sky-100 text-center text-xs font-semibold text-sky-700 flex items-center justify-center gap-2">
+                        <i class="fa-solid fa-arrows-rotate animate-spin text-sky-500"></i> Diselaraskan Secara Masa Nyata
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <section id="sec-issue" class="tab-content hidden space-y-6">
+            <div class="max-w-2xl mx-auto">
+                <div class="glass-card rounded-3xl p-6 sm:p-8 space-y-6">
+                    <div class="text-center max-w-lg mx-auto">
+                        <div class="inline-flex p-3.5 bg-sky-100 rounded-2xl text-sky-600 mb-3 border border-sky-200">
+                            <i class="fa-solid fa-ticket text-4xl pastel-gradient-text"></i>
+                        </div>
+                        <h2 class="text-2xl font-black font-display text-slate-900">Pendaftaran Tiket Pesakit</h2>
+                        <p class="text-xs text-slate-500 mt-1">Masukkan nama pesakit & kategori preskripsi untuk pendaftaran giliran ubat.</p>
+                    </div>
+
+                    <form id="issueTicketForm" onsubmit="handleIssueTicket(event)" class="space-y-6">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">
+                                    <i class="fa-solid fa-user-pen text-sky-600 mr-1"></i> Nama Pesakit <span class="text-rose-500">*</span>
+                                </label>
+                                <input type="text" id="patientNameInput" required placeholder="CONTOH: AHMAD BIN RAZAK" class="w-full bg-white/80 border border-sky-200 rounded-2xl px-4 py-3.5 text-sm font-extrabold text-slate-800 focus:ring-2 focus:ring-sky-500 outline-none uppercase shadow-sm">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                    No. RN / Preskripsi <span class="text-slate-400 font-normal">(Pilihan)</span>
+                                </label>
+                                <input type="text" id="patientRnInput" placeholder="CONTOH: RN109823" class="w-full bg-white/80 border border-sky-200 rounded-2xl px-4 py-3 text-sm font-semibold focus:ring-2 focus:ring-sky-500 outline-none uppercase shadow-sm">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                    No. Tiket Manual <span class="text-slate-400 font-normal">(Auto jika kosong)</span>
+                                </label>
+                                <input type="text" id="customTicketNumInput" placeholder="CONTOH: A1005" class="w-full bg-white/80 border border-sky-200 rounded-2xl px-4 py-3 text-sm font-mono font-semibold focus:ring-2 focus:ring-sky-500 outline-none uppercase shadow-sm">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-3">
+                                Kategori Preskripsi <span class="text-rose-500">*</span>
+                            </label>
+                            <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
+                                <label class="relative flex flex-col p-4 bg-white/80 rounded-2xl border-2 border-sky-100 cursor-pointer transition select-none hover:border-sky-400 shadow-sm">
+                                    <input type="radio" name="ticketCategory" value="A" checked class="sr-only peer">
+                                    <div class="peer-checked:border-sky-600 peer-checked:bg-sky-50 absolute inset-0 rounded-2xl border-2 pointer-events-none transition"></div>
+                                    <span class="text-[10px] font-black px-2 py-0.5 bg-blue-100 text-blue-800 rounded-md w-max mb-1">Kategori A</span>
+                                    <span class="font-bold text-slate-800 text-sm">Pesakit Am</span>
+                                    <span class="text-[11px] text-slate-400 mt-0.5">Prefix A1000+</span>
+                                </label>
+
+                                <label class="relative flex flex-col p-4 bg-white/80 rounded-2xl border-2 border-sky-100 cursor-pointer transition select-none hover:border-sky-400 shadow-sm">
+                                    <input type="radio" name="ticketCategory" value="B" class="sr-only peer">
+                                    <div class="peer-checked:border-sky-600 peer-checked:bg-sky-50 absolute inset-0 rounded-2xl border-2 pointer-events-none transition"></div>
+                                    <span class="text-[10px] font-black px-2 py-0.5 bg-amber-100 text-amber-800 rounded-md w-max mb-1">Kategori B</span>
+                                    <span class="font-bold text-slate-800 text-sm">Warga Emas / OKU</span>
+                                    <span class="text-[11px] text-slate-400 mt-0.5">Keutamaan B2000+</span>
+                                </label>
+
+                                <label class="relative flex flex-col p-4 bg-white/80 rounded-2xl border-2 border-sky-100 cursor-pointer transition select-none hover:border-sky-400 shadow-sm">
+                                    <input type="radio" name="ticketCategory" value="C" class="sr-only peer">
+                                    <div class="peer-checked:border-sky-600 peer-checked:bg-sky-50 absolute inset-0 rounded-2xl border-2 pointer-events-none transition"></div>
+                                    <span class="text-[10px] font-black px-2 py-0.5 bg-purple-100 text-purple-800 rounded-md w-max mb-1">Kategori C</span>
+                                    <span class="font-bold text-slate-800 text-sm">Fast Track / Refill</span>
+                                    <span class="text-[11px] text-slate-400 mt-0.5">Ulangan C3000+</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="pt-2">
+                            <button type="submit" class="w-full pastel-btn text-white font-black py-4 px-6 rounded-2xl text-base shadow-xl transition flex items-center justify-center gap-3">
+                                <i class="fa-solid fa-print"></i> Janakan Tiket Giliran Pesakit
+                            </button>
+                        </div>
+                    </form>
+                </div>
+
+                <!-- Printable Slip -->
+                <div id="ticketPrintSlip" class="hidden mt-6 bg-white rounded-3xl border-2 border-sky-400 p-6 shadow-2xl text-center max-w-sm mx-auto relative overflow-hidden">
+                    <div class="text-[11px] font-black uppercase text-sky-900 tracking-wider">Unit Farmasi KK Permatang Badak</div>
+                    <div class="text-xs text-slate-500 mb-3">PKD Kuantan</div>
+                    
+                    <div class="border-t border-b border-dashed border-sky-200 py-4 my-2">
+                        <div class="text-xs font-bold text-sky-700 uppercase" id="slipCategory">Kategori A - Am</div>
+                        <div class="text-6xl font-black font-mono text-slate-900 tracking-tight my-2 pastel-gradient-text" id="slipNumber">A1001</div>
+                        <div class="text-base font-black text-slate-900 uppercase" id="slipPatient">NAMA: AHMAD BIN RAZAK</div>
+                        <div class="text-xs text-slate-500 mt-1" id="slipRn">No. RN: RN109823</div>
+                    </div>
+
+                    <div class="text-[11px] text-slate-500 space-y-0.5">
+                        <p>Masa Daftar: <span id="slipTime" class="font-bold text-slate-700">00:00:00</span></p>
+                        <p class="text-sky-600 font-semibold italic">Sila tunggu di ruang legar sehingga nombor anda dipanggil.</p>
+                    </div>
+
+                    <button onclick="hidePrintSlip()" class="mt-4 text-xs font-extrabold text-sky-700 hover:text-sky-900 underline">
+                        Tutup Slip
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-display" class="tab-content hidden">
+            <div id="fullscreenDisplayContainer" class="bg-slate-950 text-white rounded-3xl p-6 sm:p-10 shadow-2xl border border-slate-800 min-h-[720px] flex flex-col justify-between relative overflow-hidden">
+                
+                <div class="flex justify-between items-center border-b border-slate-800 pb-6 mb-8">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 bg-gradient-to-tr from-sky-400 to-indigo-500 text-white font-black rounded-2xl flex items-center justify-center text-2xl shadow-lg shadow-sky-500/20">
+                            <i class="fa-solid fa-hospital-user"></i>
+                        </div>
+                        <div>
+                            <h2 class="text-2xl sm:text-3xl font-black font-display text-white tracking-tight uppercase flex items-center gap-2">
+                                Unit Farmasi <span class="pastel-gradient-text">KK Permatang Badak</span>
+                            </h2>
+                            <p class="text-xs sm:text-sm text-slate-400">Pejabat Kesihatan Daerah Kuantan — Skrin Panggilan Awam</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <button onclick="toggleTvPrivacy()" id="tvPrivacyBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 text-xs font-bold text-sky-300 rounded-xl border border-slate-700 transition flex items-center gap-2">
+                            <i id="tvPrivacyIcon" class="fa-solid fa-eye"></i> <span id="tvPrivacyText">Sensored Name: OFF</span>
+                        </button>
+
+                        <div class="text-right">
+                            <div id="tvClock" class="text-3xl font-black font-mono text-sky-300">00:00:00</div>
+                            <div id="tvDate" class="text-xs text-slate-400">00/00/0000</div>
+                        </div>
+                        <button onclick="toggleFullscreenTV()" class="p-3 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-2xl transition" title="Skrin Penuh">
+                            <i class="fa-solid fa-expand text-lg"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch flex-grow">
+                    <!-- Callout Screen -->
+                    <div class="lg:col-span-8 bg-gradient-to-br from-slate-900 via-sky-950 to-slate-950 border-2 border-sky-500/50 rounded-3xl p-8 flex flex-col justify-center items-center text-center shadow-2xl relative overflow-hidden animate-soft-glow">
+                        <div class="absolute top-5 left-5 bg-sky-500 text-white font-black text-xs px-4 py-1.5 rounded-full uppercase tracking-wider">
+                            SEDANG DIPANGGIL / NOW CALLING
+                        </div>
+
+                        <div class="my-6 space-y-2">
+                            <div class="text-8xl sm:text-9xl font-black font-mono tracking-tight text-white drop-shadow-2xl" id="tvCallingNumber">
+                                ---
+                            </div>
+                            <div class="text-3xl sm:text-4xl font-black text-sky-200 tracking-wide uppercase" id="tvCallingName">
+                                TIADA PANGGILAN
+                            </div>
+                            <div class="text-base text-slate-400 font-semibold" id="tvCallingCat">
+                                Sila Tunggu Panggilan
+                            </div>
+                        </div>
+
+                        <div class="bg-gradient-to-r from-sky-500 via-indigo-600 to-pink-500 text-white font-black text-3xl sm:text-5xl px-10 py-5 rounded-2xl shadow-xl border border-white/20 uppercase tracking-wide" id="tvCallingCounter">
+                            SILA KE KAUNTER -
+                        </div>
+                    </div>
+
+                    <!-- Recent Calls -->
+                    <div class="lg:col-span-4 flex flex-col justify-between space-y-4">
+                        <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-6 flex-grow">
+                            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 flex items-center justify-between">
+                                <span>Panggilan Terakhir</span>
+                                <i class="fa-solid fa-clock-rotate-left text-sky-400"></i>
+                            </h3>
+                            <div id="tvRecentCallsList" class="space-y-3">
+                                <!-- Dynamic list -->
+                            </div>
+                        </div>
+
+                        <div class="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 text-center">
+                            <div class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Purata Masa Menunggu Hari Ini</div>
+                            <div class="text-3xl font-black text-amber-300 font-mono mt-1" id="tvAvgWaitTime">0 min</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-8 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <span class="bg-sky-500/20 text-sky-300 font-black px-3 py-1 rounded-md uppercase text-[10px]">Peringatan</span>
+                        <p class="truncate">Sila sediakan kad pengenalan dan resit perkhidmatan semasa dipanggil ke kaunter.</p>
+                    </div>
+                    <div class="whitespace-nowrap font-bold text-sky-400">
+                        KKPB QMS Pastel v3.4
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-analytics" class="tab-content hidden space-y-6">
+            
+            <div class="glass-card rounded-3xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <div>
+                    <h2 class="text-xl font-black text-slate-900 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-line text-sky-600"></i> Laporan Masa Menunggu & KPI KKM
+                    </h2>
+                    <p class="text-xs text-slate-500">Piawaian Sasaran KKM: Masa menunggu &lt; 30 minit dari daftar hingga dipanggil</p>
+                </div>
+
+                <div class="flex items-center gap-4 bg-white/80 p-4 rounded-2xl border border-sky-100 shadow-sm w-full md:w-auto">
+                    <div class="text-right">
+                        <div class="text-xs font-bold text-slate-500">Pencapaian KPI (&lt; 30 min)</div>
+                        <div class="text-3xl font-black text-emerald-600" id="kpiPercentage">100%</div>
+                    </div>
+                    <div class="w-14 h-14 rounded-full border-4 border-emerald-500 flex items-center justify-center font-black text-xs text-emerald-700" id="kpiCircle">
+                        100%
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="glass-card rounded-3xl p-6">
+                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-clock text-blue-600"></i> Taburan Waktu Puncak (Peak Hours)
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="peakHoursChart"></canvas>
+                    </div>
+                </div>
+
+                <div class="glass-card rounded-3xl p-6">
+                    <h3 class="text-xs font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-sky-600"></i> Agihan Kategori Preskripsi
+                    </h3>
+                    <div class="h-64">
+                        <canvas id="categoryChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Log Table -->
+            <div class="glass-card rounded-3xl p-6 space-y-4">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 pb-4 border-b border-sky-100">
+                    <div>
+                        <h3 class="text-base font-black text-slate-900">Log Rekod Penuh Dispensari</h3>
+                        <p class="text-xs text-slate-500">Rekod lengkap masa pendaftaran, panggilan kaunter, dan masa dispensing</p>
+                    </div>
+
+                    <div class="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                        <input type="text" id="logSearchInput" oninput="filterLogTable()" placeholder="Cari nombor / nama..." class="bg-white/80 border border-sky-200 text-xs rounded-xl px-3 py-2 w-full sm:w-48 focus:ring-sky-500 outline-none font-medium">
+                        
+                        <select id="logStatusFilter" onchange="filterLogTable()" class="bg-white/80 border border-sky-200 text-xs rounded-xl px-3 py-2 focus:ring-sky-500 outline-none font-medium">
+                            <option value="ALL">Semua Status</option>
+                            <option value="WAITING">Menunggu</option>
+                            <option value="DISPENSING">Dipanggil</option>
+                            <option value="COMPLETED">Selesai</option>
+                            <option value="NO_SHOW">Tidak Hadir</option>
+                        </select>
+
+                        <button onclick="exportTableToCSV()" class="pastel-btn text-white font-bold text-xs px-3.5 py-2 rounded-xl transition flex items-center gap-1.5 shadow-sm">
+                            <i class="fa-solid fa-file-csv"></i> Eksport CSV
+                        </button>
+                    </div>
+                </div>
+
+                <div class="overflow-x-auto rounded-2xl border border-sky-100 bg-white/60">
+                    <table class="w-full text-left text-xs text-slate-700">
+                        <thead class="bg-sky-100/70 text-sky-950 font-extrabold uppercase tracking-wider">
+                            <tr>
+                                <th class="p-3">No. Tiket</th>
+                                <th class="p-3">Nama Pesakit</th>
+                                <th class="p-3">Kaunter</th>
+                                <th class="p-3">Kategori</th>
+                                <th class="p-3">Masa Ambil</th>
+                                <th class="p-3">Masa Dipanggil</th>
+                                <th class="p-3">Masa Selesai</th>
+                                <th class="p-3">Masa Menunggu</th>
+                                <th class="p-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="logTableBody" class="divide-y divide-sky-100/60 font-mono">
+                            <!-- Injected dynamically -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <section id="sec-settings" class="tab-content hidden space-y-6">
+            
+            <!-- Lock Screen Prompt (Visible when Admin Access is LOCKED) -->
+            <div id="settingsLockScreen" class="max-w-md mx-auto py-12">
+                <div class="glass-card rounded-3xl p-8 space-y-6 text-center border-2 border-rose-200/80 shadow-2xl">
+                    <div class="w-16 h-16 rounded-3xl bg-rose-100 text-rose-600 flex items-center justify-center mx-auto text-3xl border border-rose-200">
+                        <i class="fa-solid fa-lock"></i>
+                    </div>
+
+                    <div class="space-y-1">
+                        <h2 class="text-xl font-black text-slate-900">Akses Pentadbir Terkunci</h2>
+                        <p class="text-xs text-slate-500">Bahagian Tetapan & Cloud dilindungi dengan kata laluan pentadbir.</p>
+                    </div>
+
+                    <form onsubmit="handleSettingsPasswordUnlock(event)" class="space-y-4">
+                        <div>
+                            <input type="password" id="tabAdminPasswordInput" required placeholder="Masukkan Kata Laluan..." class="w-full bg-white border border-sky-200 text-center text-xl tracking-widest font-mono rounded-2xl px-4 py-3.5 focus:ring-2 focus:ring-sky-500 outline-none shadow-inner">
+                            <p id="tabPasswordErrorText" class="text-xs text-rose-600 font-bold mt-2 hidden">Kata laluan tidak tepat. Sila cuba lagi.</p>
+                        </div>
+
+                        <button type="submit" class="w-full pastel-btn text-white font-black py-3.5 rounded-2xl text-sm shadow-lg transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-key"></i> Buka Akses Tetapan
+                        </button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- Protected Settings Content (Hidden until password 990816 is correct) -->
+            <div id="settingsProtectedContent" class="hidden max-w-3xl mx-auto space-y-6">
+                
+                <!-- Admin Active Status Header & Re-lock Button -->
+                <div class="p-4 bg-emerald-50 border border-emerald-200 rounded-3xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-sm">
+                    <div class="flex items-center gap-3 text-emerald-900 text-xs font-extrabold text-center sm:text-left">
+                        <div class="w-8 h-8 rounded-full bg-emerald-200 text-emerald-800 flex items-center justify-center text-sm shrink-0">
+                            <i class="fa-solid fa-user-check"></i>
+                        </div>
+                        <span>Akses Pentadbir Aktif. Anda boleh mengemaskini tetapan kaunter, Firebase, dan penyelenggaraan data.</span>
+                    </div>
+                    <button onclick="lockAdminAccess()" class="whitespace-nowrap px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-2xl text-xs font-bold transition shadow flex items-center gap-2">
+                        <i class="fa-solid fa-lock text-xs"></i> Kunci Semula Admin
+                    </button>
+                </div>
+
+                <!-- Dynamic Counter Management Card -->
+                <div class="glass-card rounded-3xl p-6 space-y-5">
+                    <div class="flex items-center justify-between pb-3 border-b border-sky-100">
+                        <div>
+                            <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-list-check text-sky-600"></i> Pengurusan Senarai Kaunter Dispensari
+                            </h3>
+                            <p class="text-xs text-slate-500">Tambah, sunting, atau aktifkan kaunter ubat mengikut keperluan Klinik Kesihatan</p>
+                        </div>
+                    </div>
+
+                    <form onsubmit="handleAddCounter(event)" class="flex gap-2">
+                        <input type="text" id="newCounterNameInput" required placeholder="CONTOH: Kaunter 4 / Kaunter Saringan" class="flex-grow bg-white/80 border border-sky-200 text-xs rounded-xl px-4 py-2.5 font-bold outline-none focus:ring-2 focus:ring-sky-500">
+                        <button type="submit" class="pastel-btn text-white font-bold text-xs px-4 py-2.5 rounded-xl whitespace-nowrap shadow">
+                            <i class="fa-solid fa-plus mr-1"></i> Tambah Kaunter
+                        </button>
+                    </form>
+
+                    <div class="space-y-2 pt-2" id="settingsCounterList">
+                        <!-- Dynamic counter rows -->
+                    </div>
+                </div>
+
+                <!-- Firebase Config -->
+                <div class="glass-card rounded-3xl p-6 space-y-5 relative overflow-hidden">
+                    <div class="flex items-center justify-between pb-3 border-b border-sky-100">
+                        <div>
+                            <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
+                                <i class="fa-solid fa-cloud-arrow-up text-blue-600"></i> Penyamaan Firebase Cloud
+                            </h3>
+                            <p class="text-xs text-slate-500">Konfigurasi Firebase Cloud Sync (anh-dapur-tracker)</p>
+                        </div>
+                        <label class="relative inline-flex items-center cursor-pointer">
+                            <input type="checkbox" id="toggleFirebaseEnable" onchange="toggleFirebaseSync(this.checked)" checked class="sr-only peer">
+                            <div class="w-11 h-6 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-sky-600"></div>
+                        </label>
+                    </div>
+
+                    <div id="firebaseConfigContainer" class="space-y-4">
+                        <form id="firebaseConfigForm" onsubmit="saveFirebaseConfigDirect(event)" class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1">API Key</label>
+                                    <input type="text" id="fbApiKey" value="AIzaSyBGygu-4EFXTM_swuzRsNTofUTcb8Zhjg4" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1">Auth Domain</label>
+                                    <input type="text" id="fbAuthDomain" value="anh-dapur-tracker.firebaseapp.com" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1">Project ID</label>
+                                    <input type="text" id="fbProjectId" value="anh-dapur-tracker" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block font-bold text-slate-700 mb-1">App ID</label>
+                                    <input type="text" id="fbAppId" value="1:848828313735:web:f21aa0ba57ddb96dc88822" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between pt-2 border-t border-sky-100">
+                                <span class="text-xs text-slate-500" id="firebaseConnStatus">Status: Menyambung...</span>
+                                <button type="submit" class="bg-sky-700 hover:bg-sky-600 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shadow flex items-center gap-2">
+                                    <i class="fa-solid fa-floppy-disk text-xs"></i> Simpan & Sambung
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- Reset Controls -->
+                <div class="glass-card rounded-3xl p-6 space-y-4">
+                    <h3 class="text-base font-black text-rose-600 flex items-center gap-2">
+                        <i class="fa-solid fa-trash-can"></i> Reset & Penyelenggaraan Data
+                    </h3>
+                    <p class="text-xs text-slate-500">Penyelenggaraan sistem dan persediaan rekod hari baru.</p>
+
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <button onclick="generateSampleData()" class="flex-1 bg-sky-100 hover:bg-sky-200 text-sky-800 font-bold text-xs py-3 px-4 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-vial"></i> Jana Data Ujian (Demo)
+                        </button>
+                        <button onclick="confirmResetData()" class="flex-1 bg-rose-100 hover:bg-rose-200 text-rose-800 font-bold text-xs py-3 px-4 rounded-xl transition flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-eraser"></i> Reset Rekod Hari Ini
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </main>
+
+    <footer class="bg-white/70 backdrop-blur-md border-t border-sky-200/60 py-6 mt-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-3">
+            
+            <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs font-extrabold text-sky-950">
+                <button onclick="openFooterModal('aboutModal')" class="hover:underline hover:text-sky-600 transition">Mengenai QMS & Dispensing</button>
+                <span class="text-sky-300">•</span>
+                <button onclick="openFooterModal('privacyModal')" class="hover:underline hover:text-sky-600 transition">Notis Privasi</button>
+                <span class="text-sky-300">•</span>
+                <button onclick="openFooterModal('termsModal')" class="hover:underline hover:text-sky-600 transition">Terma & Hak Cipta</button>
+                <span class="text-sky-300">•</span>
+                <button onclick="openFooterModal('contactModal')" class="hover:underline hover:text-sky-600 transition">Hubungi Kami</button>
+            </div>
+
+            <div class="text-xs font-semibold text-slate-700">
+                &copy; <span id="yearSpan">2026</span> BPF InfoHub, Bahagian Perkhidmatan Farmasi, JKN Pahang. Hak Cipta Terpelihara.
+            </div>
+
+            <div class="text-[11px] font-medium text-slate-600 max-w-3xl mx-auto leading-relaxed">
+                Pembangunan oleh <span class="font-bold text-sky-900">Muhammad Hafizul Aniq bin Khairul Hafidz, RPh. 25588</span>, Cawangan Pengurusan Farmasi, JKN Pahang.
+            </div>
+
+        </div>
+    </footer>
+
+    <!-- Info Modals -->
+    <div id="aboutModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-card max-w-lg w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-white">
+            <div class="flex justify-between items-center pb-3 border-b border-sky-100">
+                <h3 class="font-black text-slate-900 text-base">Mengenai QMS & Dispensing</h3>
+                <button onclick="closeFooterModal('aboutModal')" class="text-slate-400 hover:text-slate-700 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="text-xs text-slate-600 leading-relaxed space-y-2">
+                <p>Sistem Pengurusan Masa Menunggu & Dispensing Ubat (QMS) dibangunkan khas untuk menyokong kelancaran perkhidmatan di Unit Farmasi Klinik Kesihatan Permatang Badak, PKD Kuantan.</p>
+                <p>Sistem ini direka untuk memantau KPI Perkhidmatan Farmasi KKM,iaitu memastikan masa tunggu pesakit adalah <strong>kurang daripada 30 minit</strong> daripada masa tiket dikeluarkan sehingga ubat diserahkan.</p>
+            </div>
+            <div class="pt-2 text-right">
+                <button onclick="closeFooterModal('aboutModal')" class="pastel-btn text-white text-xs font-bold px-4 py-2 rounded-xl">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="privacyModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-card max-w-lg w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-white">
+            <div class="flex justify-between items-center pb-3 border-b border-sky-100">
+                <h3 class="font-black text-slate-900 text-base">Notis Privasi Pesakit</h3>
+                <button onclick="closeFooterModal('privacyModal')" class="text-slate-400 hover:text-slate-700 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="text-xs text-slate-600 leading-relaxed space-y-2">
+                <p>Data nama dan nombor preskripsi pesakit yang diisi dalam sistem ini digunakan secara tempatan untuk pendaftaran giliran dan panggilan suara di Klinik Kesihatan.</p>
+                <p>Mod Paparan TV disertakan dengan fungsi <strong>"Sensored Name"</strong> bagi mematuhi etika kerahsiaan data pesakit mengikut Akta Perlindungan Data Peribadi (PDPA) KKM.</p>
+            </div>
+            <div class="pt-2 text-right">
+                <button onclick="closeFooterModal('privacyModal')" class="pastel-btn text-white text-xs font-bold px-4 py-2 rounded-xl">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="termsModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-card max-w-lg w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-white">
+            <div class="flex justify-between items-center pb-3 border-b border-sky-100">
+                <h3 class="font-black text-slate-900 text-base">Terma & Hak Cipta</h3>
+                <button onclick="closeFooterModal('termsModal')" class="text-slate-400 hover:text-slate-700 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="text-xs text-slate-600 leading-relaxed space-y-2">
+                <p>Hak cipta perisian ini adalah di bawah hak milik BPF InfoHub, Bahagian Perkhidmatan Farmasi, Jabatan Kesihatan Negeri Pahang.</p>
+                <p>Aplikasi web ini dilesenkan untuk kegunaan dalaman Klinik Kesihatan Permatang Badak dan fasiliti bawah PKD Kuantan.</p>
+            </div>
+            <div class="pt-2 text-right">
+                <button onclick="closeFooterModal('termsModal')" class="pastel-btn text-white text-xs font-bold px-4 py-2 rounded-xl">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="contactModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-card max-w-lg w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-white">
+            <div class="flex justify-between items-center pb-3 border-b border-sky-100">
+                <h3 class="font-black text-slate-900 text-base">Hubungi Kami</h3>
+                <button onclick="closeFooterModal('contactModal')" class="text-slate-400 hover:text-slate-700 p-1"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <div class="text-xs text-slate-600 leading-relaxed space-y-2">
+                <p class="font-bold text-sky-900">Unit Farmasi, Klinik Kesihatan Permatang Badak</p>
+                <p>Pejabat Kesihatan Daerah Kuantan, Pahang Darul Makmur.</p>
+                <p class="mt-2 font-bold text-slate-800">Cawangan Pengurusan Farmasi</p>
+                <p>Bahagian Perkhidmatan Farmasi, Jabatan Kesihatan Negeri Pahang.</p>
+            </div>
+            <div class="pt-2 text-right">
+                <button onclick="closeFooterModal('contactModal')" class="pastel-btn text-white text-xs font-bold px-4 py-2 rounded-xl">Tutup</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const APP_STORAGE_KEY = "KKPB_PASTEL_QMS_V3_4";
+        const ADMIN_PASS = "990816";
+
+        let state = {
+            tickets: [],
+            activeTicketId: null,
+            selectedCounterId: "1",
+            counters: [
+                { id: "1", name: "KAUNTER 1", active: true },
+                { id: "2", name: "KAUNTER 2", active: true },
+                { id: "3", name: "KAUNTER 3", active: true },
+                { id: "S", name: "KAUNTER SARINGAN", active: true }
+            ],
+            soundEnabled: true,
+            tvPrivacySensor: false,
+            kpiTargetMinutes: 30,
+            callMode: "priority",
+            firebaseEnabled: true,
+            firebaseConfig: {
+                apiKey: "AIzaSyBGygu-4EFXTM_swuzRsNTofUTcb8Zhjg4",
+                authDomain: "anh-dapur-tracker.firebaseapp.com",
+                projectId: "anh-dapur-tracker",
+                appId: "1:848828313735:web:f21aa0ba57ddb96dc88822"
+            }
+        };
+
+        let isAdminUnlocked = false;
+
+        let liveTimersInterval = null;
+        let peakChartInstance = null;
+        let categoryChartInstance = null;
+        let firebaseApp = null;
+        let firebaseDb = null;
+        let unsubscribeFirestore = null;
+
+        window.onload = function() {
+            loadStateFromStorage();
+            startClock();
+            startLiveTimers();
+            renderAllViews();
+            initCharts();
+            document.getElementById('yearSpan').textContent = new Date().getFullYear();
+
+            if (state.firebaseEnabled) {
+                initFirebaseConnection();
+            }
+        };
+
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(`sec-${tabName}`).classList.remove('hidden');
+            document.getElementById(`tab-${tabName}`).classList.add('active');
+
+            if (tabName === 'settings') {
+                updateSettingsAccessUI();
+            } else if (tabName === 'analytics') {
+                updateCharts();
+            }
+        }
+
+        function handleSettingsPasswordUnlock(event) {
+            event.preventDefault();
+            const inputPass = document.getElementById('tabAdminPasswordInput').value.trim();
+
+            if (inputPass === ADMIN_PASS) {
+                isAdminUnlocked = true;
+                document.getElementById('tabPasswordErrorText').classList.add('hidden');
+                document.getElementById('tabAdminPasswordInput').value = '';
+                updateSettingsAccessUI();
+            } else {
+                document.getElementById('tabPasswordErrorText').classList.remove('hidden');
+            }
+        }
+
+        function lockAdminAccess() {
+            isAdminUnlocked = false;
+            updateSettingsAccessUI();
+        }
+
+        function updateSettingsAccessUI() {
+            const lockScreen = document.getElementById('settingsLockScreen');
+            const protectedContent = document.getElementById('settingsProtectedContent');
+
+            if (isAdminUnlocked) {
+                lockScreen.classList.add('hidden');
+                protectedContent.classList.remove('hidden');
+            } else {
+                lockScreen.classList.remove('hidden');
+                protectedContent.classList.add('hidden');
+            }
+        }
+
+        function saveStateToStorage() {
+            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(state));
+
+            if (state.firebaseEnabled && firebaseDb && window.FirebaseModule) {
+                try {
+                    const { doc, setDoc } = window.FirebaseModule;
+                    const docRef = doc(firebaseDb, "pharmacy_qms", "kk_permatang_badak");
+                    setDoc(docRef, {
+                        tickets: state.tickets,
+                        activeTicketId: state.activeTicketId,
+                        counters: state.counters,
+                        selectedCounterId: state.selectedCounterId,
+                        updatedAt: new Date().toISOString()
+                    }, { merge: true });
+                } catch (e) {
+                    console.error("Ralat Firebase:", e);
+                }
+            }
+        }
+
+        function loadStateFromStorage() {
+            const stored = localStorage.getItem(APP_STORAGE_KEY);
+            if (stored) {
+                try {
+                    const parsed = JSON.parse(stored);
+                    state.tickets = parsed.tickets || [];
+                    state.activeTicketId = parsed.activeTicketId || null;
+                    state.selectedCounterId = parsed.selectedCounterId || "1";
+                    state.counters = parsed.counters || state.counters;
+                    state.soundEnabled = parsed.soundEnabled !== undefined ? parsed.soundEnabled : true;
+                    state.tvPrivacySensor = parsed.tvPrivacySensor || false;
+                    state.callMode = parsed.callMode || "priority";
+                    state.firebaseEnabled = parsed.firebaseEnabled !== undefined ? parsed.firebaseEnabled : true;
+                    if (parsed.firebaseConfig) state.firebaseConfig = parsed.firebaseConfig;
+                } catch (e) {
+                    console.error("Ralat LocalStorage:", e);
+                }
+            }
+            updateSoundIcon();
+            updateStorageBadgeUI();
+        }
+
+        function toggleFirebaseSync(enabled) {
+            state.firebaseEnabled = enabled;
+            saveStateToStorage();
+            updateStorageBadgeUI();
+
+            if (enabled) {
+                initFirebaseConnection();
+            } else {
+                if (unsubscribeFirestore) unsubscribeFirestore();
+                document.getElementById('firebaseConnStatus').textContent = "Status: Mod LocalStorage (Offline)";
+            }
+        }
+
+        function saveFirebaseConfigDirect(event) {
+            if (event) event.preventDefault();
+
+            state.firebaseConfig = {
+                apiKey: document.getElementById('fbApiKey').value.trim(),
+                authDomain: document.getElementById('fbAuthDomain').value.trim(),
+                projectId: document.getElementById('fbProjectId').value.trim(),
+                appId: document.getElementById('fbAppId').value.trim()
+            };
+            state.firebaseEnabled = true;
+            document.getElementById('toggleFirebaseEnable').checked = true;
+
+            saveStateToStorage();
+            updateStorageBadgeUI();
+            initFirebaseConnection();
+            alert("Konfigurasi Firebase berjaya dikemaskini.");
+        }
+
+        function initFirebaseConnection() {
+            const cfg = state.firebaseConfig;
+            if (!cfg.apiKey || !cfg.projectId) {
+                document.getElementById('firebaseConnStatus').textContent = "Status: Maklumat API tidak lengkap.";
+                return;
+            }
+
+            if (!window.FirebaseModule) {
+                setTimeout(initFirebaseConnection, 1000);
+                return;
+            }
+
+            try {
+                const { initializeApp, getFirestore, doc, onSnapshot } = window.FirebaseModule;
+                firebaseApp = initializeApp(cfg);
+                firebaseDb = getFirestore(firebaseApp);
+
+                document.getElementById('firebaseConnStatus').textContent = "Status: Tersambung & Real-Time Sync!";
+
+                const docRef = doc(firebaseDb, "pharmacy_qms", "kk_permatang_badak");
+                unsubscribeFirestore = onSnapshot(docRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        if (data.tickets) {
+                            state.tickets = data.tickets;
+                            state.activeTicketId = data.activeTicketId;
+                            if (data.counters) state.counters = data.counters;
+                            renderAllViews();
+                        }
+                    }
+                });
+            } catch (e) {
+                document.getElementById('firebaseConnStatus').textContent = "Ralat: " + e.message;
+            }
+        }
+
+        function updateStorageBadgeUI() {
+            const badgeDot = document.getElementById('syncDot');
+            const badgeText = document.getElementById('syncText');
+
+            if (state.firebaseEnabled) {
+                badgeDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping";
+                badgeText.textContent = "Firebase Live Sync";
+            } else {
+                badgeDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400";
+                badgeText.textContent = "Mod LocalStorage";
+            }
+        }
+
+        function startClock() {
+            function update() {
+                const now = new Date();
+                const timeStr = now.toLocaleTimeString('en-US', { hour12: true });
+                const dateStr = now.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                
+                document.getElementById('liveClock').textContent = timeStr;
+                document.getElementById('liveDate').textContent = dateStr;
+
+                const tvClock = document.getElementById('tvClock');
+                const tvDate = document.getElementById('tvDate');
+                if (tvClock) tvClock.textContent = timeStr;
+                if (tvDate) tvDate.textContent = now.toLocaleDateString('ms-MY');
+            }
+            update();
+            setInterval(update, 1000);
+        }
+
+        function startLiveTimers() {
+            if (liveTimersInterval) clearInterval(liveTimersInterval);
+            liveTimersInterval = setInterval(() => {
+                updateActiveTicketTimers();
+            }, 1000);
+        }
+
+        function updateActiveTicketTimers() {
+            const activeId = state.activeTicketId;
+            const waitTimerEl = document.getElementById('liveWaitTimer');
+            const dispenseTimerEl = document.getElementById('liveDispenseTimer');
+
+            if (!activeId) {
+                waitTimerEl.textContent = "00:00";
+                dispenseTimerEl.textContent = "00:00";
+                return;
+            }
+
+            const ticket = state.tickets.find(t => t.id === activeId);
+            if (!ticket) return;
+
+            const now = new Date();
+
+            let waitMs = ticket.calledAt ? (new Date(ticket.calledAt) - new Date(ticket.issuedAt)) : (now - new Date(ticket.issuedAt));
+            waitTimerEl.textContent = formatDuration(waitMs);
+
+            let dispenseMs = 0;
+            if (ticket.calledAt) {
+                dispenseMs = ticket.completedAt ? (new Date(ticket.completedAt) - new Date(ticket.calledAt)) : (now - new Date(ticket.calledAt));
+            }
+            dispenseTimerEl.textContent = formatDuration(dispenseMs);
+        }
+
+        function formatDuration(ms) {
+            if (ms < 0) ms = 0;
+            const totalSeconds = Math.floor(ms / 1000);
+            const mins = Math.floor(totalSeconds / 60);
+            const secs = totalSeconds % 60;
+            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        }
+
+        function openFooterModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeFooterModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        function selectActiveCounter(counterId) {
+            state.selectedCounterId = counterId;
+            saveStateToStorage();
+            renderCounterSelectorUI();
+            renderCounterControlPanel();
+        }
+
+        function handleAddCounter(event) {
+            event.preventDefault();
+            const input = document.getElementById('newCounterNameInput');
+            const name = input.value.trim().toUpperCase();
+
+            if (!name) return;
+
+            const newId = String(Date.now());
+            state.counters.push({ id: newId, name: name, active: true });
+            input.value = '';
+
+            saveStateToStorage();
+            renderAllViews();
+        }
+
+        function toggleCounterActive(counterId) {
+            const counter = state.counters.find(c => c.id === counterId);
+            if (counter) {
+                counter.active = !counter.active;
+                saveStateToStorage();
+                renderAllViews();
+            }
+        }
+
+        function deleteCounter(counterId) {
+            if (confirm("Padam kaunter ini?")) {
+                state.counters = state.counters.filter(c => c.id !== counterId);
+                if (state.selectedCounterId === counterId && state.counters.length > 0) {
+                    state.selectedCounterId = state.counters[0].id;
+                }
+                saveStateToStorage();
+                renderAllViews();
+            }
+        }
+
+        function handleIssueTicket(event) {
+            event.preventDefault();
+
+            const category = document.querySelector('input[name="ticketCategory"]:checked').value;
+            const patientName = document.getElementById('patientNameInput').value.trim().toUpperCase();
+            const patientRn = document.getElementById('patientRnInput').value.trim().toUpperCase() || 'TIADA';
+            const customNum = document.getElementById('customTicketNumInput').value.trim().toUpperCase();
+
+            let ticketNumber = customNum;
+
+            if (!ticketNumber) {
+                let prefix = "A";
+                let startNum = 1000;
+                if (category === "B") { prefix = "B"; startNum = 2000; }
+                if (category === "C") { prefix = "C"; startNum = 3000; }
+
+                const existingCatTickets = state.tickets.filter(t => t.category === category);
+                ticketNumber = `${prefix}${startNum + existingCatTickets.length + 1}`;
+            }
+
+            const newTicket = {
+                id: 'T_' + Date.now(),
+                number: ticketNumber,
+                category: category,
+                patientName: patientName,
+                patientRn: patientRn,
+                status: 'WAITING',
+                issuedAt: new Date().toISOString(),
+                calledAt: null,
+                completedAt: null,
+                counterId: null
+            };
+
+            state.tickets.push(newTicket);
+            saveStateToStorage();
+
+            document.getElementById('patientNameInput').value = '';
+            document.getElementById('patientRnInput').value = '';
+            document.getElementById('customTicketNumInput').value = '';
+
+            showPrintSlip(newTicket);
+            renderAllViews();
+        }
+
+        function showPrintSlip(ticket) {
+            const catNames = {
+                "A": "Kategori A - Pesakit Am",
+                "B": "Kategori B - Warga Emas / OKU",
+                "C": "Kategori C - Fast Track / Refill"
+            };
+
+            document.getElementById('slipCategory').textContent = catNames[ticket.category] || "Kategori Am";
+            document.getElementById('slipNumber').textContent = ticket.number;
+            document.getElementById('slipPatient').textContent = `NAMA: ${ticket.patientName}`;
+            document.getElementById('slipRn').textContent = `No. RN: ${ticket.patientRn}`;
+            document.getElementById('slipTime').textContent = new Date(ticket.issuedAt).toLocaleTimeString('ms-MY');
+
+            const slip = document.getElementById('ticketPrintSlip');
+            slip.classList.remove('hidden');
+            slip.scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function hidePrintSlip() {
+            document.getElementById('ticketPrintSlip').classList.add('hidden');
+        }
+
+        function updateCallMode(mode) {
+            state.callMode = mode;
+            saveStateToStorage();
+        }
+
+        function actionCallNext() {
+            if (state.activeTicketId) {
+                const currentTicket = state.tickets.find(t => t.id === state.activeTicketId);
+                if (currentTicket && currentTicket.status === 'DISPENSING') {
+                    currentTicket.status = 'COMPLETED';
+                    currentTicket.completedAt = new Date().toISOString();
+                }
+            }
+
+            let waitingQueue = state.tickets.filter(t => t.status === 'WAITING');
+
+            if (waitingQueue.length === 0) {
+                alert("Tiada tiket menunggu dalam senarai.");
+                state.activeTicketId = null;
+                saveStateToStorage();
+                renderAllViews();
+                return;
+            }
+
+            let nextTicket = null;
+
+            if (state.callMode === "priority") {
+                const priorityB = waitingQueue.filter(t => t.category === 'B');
+                nextTicket = priorityB.length > 0 ? priorityB[0] : waitingQueue[0];
+            } else {
+                nextTicket = waitingQueue[0];
+            }
+
+            const currentCounter = state.counters.find(c => c.id === state.selectedCounterId);
+            const counterName = currentCounter ? currentCounter.name : "KAUNTER";
+
+            nextTicket.status = 'DISPENSING';
+            nextTicket.calledAt = new Date().toISOString();
+            nextTicket.counterId = state.selectedCounterId;
+            nextTicket.counterName = counterName;
+
+            state.activeTicketId = nextTicket.id;
+            saveStateToStorage();
+
+            speakAnnouncement(nextTicket.number, nextTicket.patientName, counterName);
+            renderAllViews();
+        }
+
+        function actionRecallCurrent() {
+            if (!state.activeTicketId) return;
+            const ticket = state.tickets.find(t => t.id === state.activeTicketId);
+            if (ticket) {
+                speakAnnouncement(ticket.number, ticket.patientName, ticket.counterName || "KAUNTER");
+            }
+        }
+
+        function actionCompleteCurrent() {
+            if (!state.activeTicketId) return;
+            const ticket = state.tickets.find(t => t.id === state.activeTicketId);
+            if (ticket) {
+                ticket.status = 'COMPLETED';
+                ticket.completedAt = new Date().toISOString();
+            }
+
+            state.activeTicketId = null;
+            saveStateToStorage();
+            renderAllViews();
+        }
+
+        function actionNoShowCurrent() {
+            if (!state.activeTicketId) return;
+            const ticket = state.tickets.find(t => t.id === state.activeTicketId);
+            if (ticket) {
+                ticket.status = 'NO_SHOW';
+                ticket.completedAt = new Date().toISOString();
+            }
+
+            state.activeTicketId = null;
+            saveStateToStorage();
+            renderAllViews();
+        }
+
+        function toggleSound() {
+            state.soundEnabled = !state.soundEnabled;
+            saveStateToStorage();
+            updateSoundIcon();
+        }
+
+        function updateSoundIcon() {
+            const icon = document.getElementById('soundIcon');
+            icon.className = state.soundEnabled ? "fa-solid fa-volume-high text-base text-sky-600" : "fa-solid fa-volume-xmark text-base text-rose-500";
+        }
+
+        function speakAnnouncement(ticketNumber, patientName, counterName) {
+            if (!state.soundEnabled) return;
+
+            playChimeBeep();
+
+            setTimeout(() => {
+                if ('speechSynthesis' in window) {
+                    window.speechSynthesis.cancel();
+
+                    const formattedNumber = ticketNumber.split('').join(' ');
+                    const textMalay = `Nombor tiket ${formattedNumber}, ${patientName}, sila ke ${counterName}`;
+
+                    const utterance = new SpeechSynthesisUtterance(textMalay);
+                    utterance.lang = 'ms-MY';
+                    utterance.rate = 0.85;
+
+                    const voices = window.speechSynthesis.getVoices();
+                    const malayVoice = voices.find(v => v.lang.includes('ms') || v.lang.includes('id'));
+                    if (malayVoice) utterance.voice = malayVoice;
+
+                    window.speechSynthesis.speak(utterance);
+                }
+            }, 600);
+        }
+
+        function playChimeBeep() {
+            try {
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                if (!AudioContext) return;
+                const ctx = new AudioContext();
+
+                const osc1 = ctx.createOscillator();
+                const osc2 = ctx.createOscillator();
+                const gain = ctx.createGain();
+
+                osc1.type = 'sine';
+                osc2.type = 'sine';
+
+                osc1.frequency.setValueAtTime(523.25, ctx.currentTime);
+                osc2.frequency.setValueAtTime(659.25, ctx.currentTime + 0.15);
+
+                gain.gain.setValueAtTime(0.1, ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+
+                osc1.connect(gain);
+                osc2.connect(gain);
+                gain.connect(ctx.destination);
+
+                osc1.start(ctx.currentTime);
+                osc1.stop(ctx.currentTime + 0.15);
+                osc2.start(ctx.currentTime + 0.15);
+                osc2.stop(ctx.currentTime + 0.5);
+            } catch (e) {
+                console.log("Audio Context disabled.");
+            }
+        }
+
+        function renderAllViews() {
+            renderSummaryKPIs();
+            renderCounterSelectorUI();
+            renderCounterControlPanel();
+            renderWaitingQueueList();
+            renderPublicTVDisplay();
+            renderLogTable();
+            renderSettingsCounterList();
+        }
+
+        function renderSummaryKPIs() {
+            const total = state.tickets.length;
+            const waiting = state.tickets.filter(t => t.status === 'WAITING').length;
+            const dispensing = state.tickets.filter(t => t.status === 'DISPENSING').length;
+            const completed = state.tickets.filter(t => t.status === 'COMPLETED').length;
+
+            const completedTickets = state.tickets.filter(t => t.status === 'COMPLETED' && t.calledAt && t.issuedAt);
+            let totalWaitMs = 0;
+            completedTickets.forEach(t => {
+                totalWaitMs += (new Date(t.calledAt) - new Date(t.issuedAt));
+            });
+
+            const avgWaitMins = completedTickets.length > 0 ? (totalWaitMs / completedTickets.length / 60000) : 0;
+
+            document.getElementById('statTotalTickets').textContent = total;
+            document.getElementById('statWaiting').textContent = waiting;
+            document.getElementById('statDispensing').textContent = dispensing;
+            document.getElementById('statCompleted').textContent = completed;
+            document.getElementById('statAvgWait').innerHTML = `${avgWaitMins.toFixed(1)} <span class="text-xs font-normal text-slate-500">min</span>`;
+
+            const kpiBadge = document.getElementById('kpiStatusBadge');
+            if (avgWaitMins <= state.kpiTargetMinutes) {
+                kpiBadge.className = "text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full inline-block mt-1";
+                kpiBadge.textContent = `KPI Cemerlang (< ${state.kpiTargetMinutes} min)`;
+            } else {
+                kpiBadge.className = "text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full inline-block mt-1";
+                kpiBadge.textContent = `Melebihi KPI (> ${state.kpiTargetMinutes} min)`;
+            }
+        }
+
+        function renderCounterSelectorUI() {
+            const container = document.getElementById('activeCounterSelectorContainer');
+            const activeCounters = state.counters.filter(c => c.active);
+
+            if (activeCounters.length === 0) {
+                container.innerHTML = `<span class="text-xs text-rose-500 font-bold">Tiada kaunter aktif. Sila aktifkan di Tetapan.</span>`;
+                return;
+            }
+
+            let html = '';
+            activeCounters.forEach(c => {
+                const isSelected = c.id === state.selectedCounterId;
+                const activeClass = isSelected ? "pastel-btn text-white shadow-md font-black" : "bg-white/80 hover:bg-white text-slate-700 border border-sky-200 font-bold";
+                html += `
+                    <button onclick="selectActiveCounter('${c.id}')" class="px-3.5 py-2 rounded-2xl text-xs transition whitespace-nowrap ${activeClass}">
+                        ${c.name}
+                    </button>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderCounterControlPanel() {
+            const activeCounter = state.counters.find(c => c.id === state.selectedCounterId);
+            const counterName = activeCounter ? activeCounter.name : "KAUNTER 1";
+
+            document.getElementById('selectedCounterBadge').textContent = activeCounter ? activeCounter.name.replace("KAUNTER ", "K") : "K1";
+            document.getElementById('selectedCounterTitle').textContent = counterName;
+
+            const activeId = state.activeTicketId;
+            const ticket = state.tickets.find(t => t.id === activeId);
+
+            const numDisplay = document.getElementById('currentNumDisplay');
+            const patientDisplay = document.getElementById('currentPatientName');
+            const catDisplay = document.getElementById('currentCategoryDisplay');
+            const rnDisplay = document.getElementById('currentRnDisplay');
+
+            const btnRecall = document.getElementById('btnRecall');
+            const btnComplete = document.getElementById('btnComplete');
+            const btnNoShow = document.getElementById('btnNoShow');
+
+            if (ticket && ticket.status === 'DISPENSING') {
+                numDisplay.textContent = ticket.number;
+                patientDisplay.textContent = `Pesakit: ${ticket.patientName}`;
+                
+                const catLabels = { "A": "Pesakit Am", "B": "Warga Emas/OKU", "C": "Fast Track" };
+                catDisplay.textContent = catLabels[ticket.category] || "Kategori";
+                rnDisplay.textContent = `RN: ${ticket.patientRn || '-'}`;
+
+                btnRecall.disabled = false;
+                btnComplete.disabled = false;
+                btnNoShow.disabled = false;
+            } else {
+                numDisplay.textContent = "---";
+                patientDisplay.textContent = "Pesakit: -";
+                catDisplay.textContent = "Tiada Tiket Dipanggil";
+                rnDisplay.textContent = "RN: -";
+
+                btnRecall.disabled = true;
+                btnComplete.disabled = true;
+                btnNoShow.disabled = true;
+            }
+
+            updateActiveTicketTimers();
+        }
+
+        function renderWaitingQueueList() {
+            const listContainer = document.getElementById('waitingQueueList');
+            const waitingTickets = state.tickets.filter(t => t.status === 'WAITING');
+
+            document.getElementById('waitingCountBadge').textContent = `${waitingTickets.length} Tiket`;
+
+            if (waitingTickets.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="text-center py-12 text-slate-400">
+                        <i class="fa-solid fa-circle-check text-4xl mb-2 text-sky-300"></i>
+                        <p class="text-xs font-semibold">Tiada tiket menunggu dalam giliran</p>
+                    </div>
+                `;
+                return;
+            }
+
+            let html = '';
+            const now = new Date();
+
+            waitingTickets.forEach((ticket) => {
+                const catColors = {
+                    "A": "bg-blue-100 text-blue-800",
+                    "B": "bg-amber-100 text-amber-800 font-extrabold",
+                    "C": "bg-purple-100 text-purple-800"
+                };
+
+                const elapsedMins = Math.floor((now - new Date(ticket.issuedAt)) / 60000);
+                let timerBadgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                if (elapsedMins >= 15 && elapsedMins < 30) {
+                    timerBadgeClass = "bg-amber-100 text-amber-800 border-amber-200";
+                } else if (elapsedMins >= 30) {
+                    timerBadgeClass = "bg-rose-100 text-rose-800 border-rose-200 animate-pulse";
+                }
+
+                html += `
+                    <div class="p-3 bg-white/80 hover:bg-white rounded-2xl border border-sky-100 flex items-center justify-between transition shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <span class="text-xs px-2.5 py-1 rounded-xl font-black ${catColors[ticket.category] || 'bg-slate-200'}">
+                                ${ticket.category}
+                            </span>
+                            <div>
+                                <div class="font-black font-mono text-base text-slate-800">${ticket.number}</div>
+                                <div class="text-xs font-bold text-slate-900 truncate max-w-[140px]">${ticket.patientName}</div>
+                                <div class="text-[10px] text-slate-400">RN: ${ticket.patientRn || '-'}</div>
+                            </div>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-xs font-mono font-bold text-slate-600">${new Date(ticket.issuedAt).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</div>
+                            <span class="text-[10px] px-2 py-0.5 rounded-full border font-black ${timerBadgeClass}">
+                                ${elapsedMins} min
+                            </span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            listContainer.innerHTML = html;
+        }
+
+        function renderPublicTVDisplay() {
+            const activeId = state.activeTicketId;
+            const ticket = state.tickets.find(t => t.id === activeId);
+
+            const tvNum = document.getElementById('tvCallingNumber');
+            const tvName = document.getElementById('tvCallingName');
+            const tvCat = document.getElementById('tvCallingCat');
+            const tvCounter = document.getElementById('tvCallingCounter');
+
+            if (ticket && ticket.status === 'DISPENSING') {
+                tvNum.textContent = ticket.number;
+                
+                let displayName = ticket.patientName;
+                if (state.tvPrivacySensor) {
+                    displayName = maskPatientName(ticket.patientName);
+                }
+                tvName.textContent = displayName;
+
+                const catNames = { "A": "Pesakit Am", "B": "Warga Emas / OKU", "C": "Fast Track" };
+                tvCat.textContent = catNames[ticket.category] || "Kategori Preskripsi";
+                tvCounter.textContent = `SILA KE ${ticket.counterName || 'KAUNTER 1'}`;
+            } else {
+                tvNum.textContent = "---";
+                tvName.textContent = "TIADA PANGGILAN";
+                tvCat.textContent = "Sila Tunggu Panggilan";
+                tvCounter.textContent = "SILA KE KAUNTER -";
+            }
+
+            const recentContainer = document.getElementById('tvRecentCallsList');
+            const recentTickets = state.tickets
+                .filter(t => t.calledAt)
+                .sort((a, b) => new Date(b.calledAt) - new Date(a.calledAt))
+                .slice(0, 4);
+
+            if (recentTickets.length === 0) {
+                recentContainer.innerHTML = `<p class="text-xs text-slate-500 italic py-4 text-center">Tiada rekod panggilan lagi.</p>`;
+            } else {
+                let html = '';
+                recentTickets.forEach(t => {
+                    const timeStr = new Date(t.calledAt).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
+                    let name = t.patientName;
+                    if (state.tvPrivacySensor) name = maskPatientName(t.patientName);
+
+                    html += `
+                        <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                            <div>
+                                <div class="font-mono font-black text-lg text-sky-300">${t.number}</div>
+                                <div class="text-xs font-bold text-slate-300 truncate max-w-[140px]">${name}</div>
+                            </div>
+                            <div class="text-right">
+                                <span class="text-[10px] font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">${t.counterName || 'KAUNTER'}</span>
+                                <div class="text-[10px] font-mono text-slate-400 mt-0.5">${timeStr}</div>
+                            </div>
+                        </div>
+                    `;
+                });
+                recentContainer.innerHTML = html;
+            }
+
+            const completedTickets = state.tickets.filter(t => t.status === 'COMPLETED' && t.calledAt && t.issuedAt);
+            let totalWaitMs = 0;
+            completedTickets.forEach(t => {
+                totalWaitMs += (new Date(t.calledAt) - new Date(t.issuedAt));
+            });
+            const avgMins = completedTickets.length > 0 ? (totalWaitMs / completedTickets.length / 60000).toFixed(1) : 0;
+            document.getElementById('tvAvgWaitTime').textContent = `${avgMins} min`;
+        }
+
+        function maskPatientName(name) {
+            if (!name) return "";
+            const parts = name.split(' ');
+            return parts.map(p => {
+                if (p.length <= 2) return p;
+                return p[0] + '*'.repeat(p.length - 2) + p[p.length - 1];
+            }).join(' ');
+        }
+
+        function toggleTvPrivacy() {
+            state.tvPrivacySensor = !state.tvPrivacySensor;
+            saveStateToStorage();
+            
+            const btnText = document.getElementById('tvPrivacyText');
+            const btnIcon = document.getElementById('tvPrivacyIcon');
+
+            if (state.tvPrivacySensor) {
+                btnText.textContent = "Sensored Name: ON";
+                btnIcon.className = "fa-solid fa-eye-slash";
+            } else {
+                btnText.textContent = "Sensored Name: OFF";
+                btnIcon.className = "fa-solid fa-eye";
+            }
+
+            renderPublicTVDisplay();
+        }
+
+        function toggleFullscreenTV() {
+            const container = document.getElementById('fullscreenDisplayContainer');
+            if (!document.fullscreenElement) {
+                container.requestFullscreen().catch(err => alert(`Ralat Skrin Penuh: ${err.message}`));
+            } else {
+                document.exitFullscreen();
+            }
+        }
+
+        function renderSettingsCounterList() {
+            const container = document.getElementById('settingsCounterList');
+            if (!container) return;
+
+            if (state.counters.length === 0) {
+                container.innerHTML = `<p class="text-xs text-slate-400 italic">Tiada kaunter didaftarkan.</p>`;
+                return;
+            }
+
+            let html = '';
+            state.counters.forEach(c => {
+                const activeBadge = c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600';
+                html += `
+                    <div class="p-3 bg-white/80 rounded-2xl border border-sky-100 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <span class="font-black text-xs text-slate-800">${c.name}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${activeBadge}">${c.active ? 'Aktif' : 'Nyahaktif'}</span>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <button onclick="toggleCounterActive('${c.id}')" class="text-xs text-sky-700 font-bold hover:underline">
+                                ${c.active ? 'Nyahaktif' : 'Aktifkan'}
+                            </button>
+                            <button onclick="deleteCounter('${c.id}')" class="text-xs text-rose-600 hover:text-rose-800">
+                                <i class="fa-solid fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            container.innerHTML = html;
+        }
+
+        function renderLogTable() {
+            filterLogTable();
+        }
+
+        function filterLogTable() {
+            const query = document.getElementById('logSearchInput').value.toLowerCase();
+            const statusFilter = document.getElementById('logStatusFilter').value;
+            const tbody = document.getElementById('logTableBody');
+
+            let filtered = state.tickets.filter(t => {
+                const matchesSearch = t.number.toLowerCase().includes(query) || 
+                                      (t.patientName && t.patientName.toLowerCase().includes(query)) ||
+                                      (t.patientRn && t.patientRn.toLowerCase().includes(query));
+                const matchesStatus = (statusFilter === 'ALL') || (t.status === statusFilter);
+                return matchesSearch && matchesStatus;
+            });
+
+            filtered.sort((a, b) => new Date(b.issuedAt) - new Date(a.issuedAt));
+
+            if (filtered.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-sans text-xs">Tiada rekod data dijumpai.</td></tr>`;
+                return;
+            }
+
+            let html = '';
+            filtered.forEach(t => {
+                const issueTime = new Date(t.issuedAt).toLocaleTimeString('ms-MY');
+                const callTime = t.calledAt ? new Date(t.calledAt).toLocaleTimeString('ms-MY') : '-';
+                const completeTime = t.completedAt ? new Date(t.completedAt).toLocaleTimeString('ms-MY') : '-';
+
+                let waitMins = '-';
+                if (t.calledAt && t.issuedAt) {
+                    waitMins = ((new Date(t.calledAt) - new Date(t.issuedAt)) / 60000).toFixed(1) + ' min';
+                }
+
+                const statusBadges = {
+                    'WAITING': '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800">Menunggu</span>',
+                    'DISPENSING': '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-100 text-blue-800">Dipanggil</span>',
+                    'COMPLETED': '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800">Selesai</span>',
+                    'NO_SHOW': '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-100 text-rose-800">Tidak Hadir</span>'
+                };
+
+                html += `
+                    <tr class="hover:bg-sky-50/50 transition">
+                        <td class="p-3 font-bold text-slate-900">${t.number}</td>
+                        <td class="p-3 font-bold text-sky-950">${t.patientName || '-'}</td>
+                        <td class="p-3 font-semibold text-slate-700">${t.counterName || '-'}</td>
+                        <td class="p-3">Kat ${t.category}</td>
+                        <td class="p-3">${issueTime}</td>
+                        <td class="p-3">${callTime}</td>
+                        <td class="p-3">${completeTime}</td>
+                        <td class="p-3 font-bold text-sky-700">${waitMins}</td>
+                        <td class="p-3">${statusBadges[t.status] || t.status}</td>
+                    </tr>
+                `;
+            });
+
+            tbody.innerHTML = html;
+        }
+
+        function exportTableToCSV() {
+            if (state.tickets.length === 0) {
+                alert("Tiada data untuk dieksport.");
+                return;
+            }
+
+            let csvContent = "data:text/csv;charset=utf-8,";
+            csvContent += "ID,Nombor Tiket,Nama Pesakit,No RN,Kaunter,Kategori,Status,Masa Ambil,Masa Dipanggil,Masa Selesai,Masa Menunggu (Min)\n";
+
+            state.tickets.forEach(t => {
+                const issueTime = new Date(t.issuedAt).toLocaleString('ms-MY');
+                const callTime = t.calledAt ? new Date(t.calledAt).toLocaleString('ms-MY') : '';
+                const completeTime = t.completedAt ? new Date(t.completedAt).toLocaleString('ms-MY') : '';
+
+                let waitMins = '';
+                if (t.calledAt && t.issuedAt) {
+                    waitMins = ((new Date(t.calledAt) - new Date(t.issuedAt)) / 60000).toFixed(2);
+                }
+
+                const row = [
+                    `"${t.id}"`,
+                    `"${t.number}"`,
+                    `"${(t.patientName || '').replace(/"/g, '""')}"`,
+                    `"${(t.patientRn || '').replace(/"/g, '""')}"`,
+                    `"${(t.counterName || '').replace(/"/g, '""')}"`,
+                    `"${t.category}"`,
+                    `"${t.status}"`,
+                    `"${issueTime}"`,
+                    `"${callTime}"`,
+                    `"${completeTime}"`,
+                    `"${waitMins}"`
+                ].join(",");
+
+                csvContent += row + "\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `Laporan_QMS_KKPB_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function initCharts() {
+            const ctx1 = document.getElementById('peakHoursChart').getContext('2d');
+            peakChartInstance = new Chart(ctx1, {
+                type: 'bar',
+                data: {
+                    labels: ['8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '2 PM', '3 PM', '4 PM'],
+                    datasets: [{
+                        label: 'Bilangan Tiket',
+                        data: [0, 0, 0, 0, 0, 0, 0, 0],
+                        backgroundColor: '#38bdf8',
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true } }
+                }
+            });
+
+            const ctx2 = document.getElementById('categoryChart').getContext('2d');
+            categoryChartInstance = new Chart(ctx2, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Kategori A (Am)', 'Kategori B (Warga Emas/OKU)', 'Kategori C (Fast Track)'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#0284c7', '#f59e0b', '#818cf8']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+
+            updateCharts();
+        }
+
+        function updateCharts() {
+            if (!peakChartInstance || !categoryChartInstance) return;
+
+            const completed = state.tickets.filter(t => t.status === 'COMPLETED' && t.calledAt && t.issuedAt);
+            let withinTarget = 0;
+
+            completed.forEach(t => {
+                const waitMins = (new Date(t.calledAt) - new Date(t.issuedAt)) / 60000;
+                if (waitMins <= state.kpiTargetMinutes) withinTarget++;
+            });
+
+            const percentage = completed.length > 0 ? Math.round((withinTarget / completed.length) * 100) : 100;
+            document.getElementById('kpiPercentage').textContent = `${percentage}%`;
+            document.getElementById('kpiCircle').textContent = `${percentage}%`;
+
+            const countA = state.tickets.filter(t => t.category === 'A').length;
+            const countB = state.tickets.filter(t => t.category === 'B').length;
+            const countC = state.tickets.filter(t => t.category === 'C').length;
+
+            categoryChartInstance.data.datasets[0].data = [countA, countB, countC];
+            categoryChartInstance.update();
+
+            const hoursCount = [0, 0, 0, 0, 0, 0, 0, 0];
+            state.tickets.forEach(t => {
+                const hour = new Date(t.issuedAt).getHours();
+                if (hour === 8) hoursCount[0]++;
+                else if (hour === 9) hoursCount[1]++;
+                else if (hour === 10) hoursCount[2]++;
+                else if (hour === 11) hoursCount[3]++;
+                else if (hour === 12) hoursCount[4]++;
+                else if (hour === 14) hoursCount[5]++;
+                else if (hour === 15) hoursCount[6]++;
+                else if (hour >= 16) hoursCount[7]++;
+            });
+
+            peakChartInstance.data.datasets[0].data = hoursCount;
+            peakChartInstance.update();
+        }
+
+        function generateSampleData() {
+            const now = new Date();
+            const sampleTickets = [];
+            const names = ['AHMAD BIN RAZAK', 'SITI FATIMAH BINTI ISMAIL', 'M. MUTHUSAMY', 'TAN WEI MING', 'KHADIJAH BINTI HASSAN'];
+
+            for (let i = 1; i <= 10; i++) {
+                const cat = i % 3 === 0 ? 'B' : (i % 2 === 0 ? 'C' : 'A');
+                let prefix = cat === 'A' ? 'A1' : (cat === 'B' ? 'B2' : 'C3');
+                let seq = String(100 + i);
+
+                const minsAgo = Math.floor(Math.random() * 35) + 5;
+                const issuedDate = new Date(now.getTime() - minsAgo * 60000);
+
+                let status = i > 8 ? 'WAITING' : 'COMPLETED';
+                let calledDate = status === 'COMPLETED' ? new Date(issuedDate.getTime() + 12 * 60000) : null;
+                let completedDate = status === 'COMPLETED' ? new Date(calledDate.getTime() + 4 * 60000) : null;
+
+                sampleTickets.push({
+                    id: 'T_SAMPLE_' + i,
+                    number: `${prefix}${seq}`,
+                    category: cat,
+                    patientName: names[i % names.length],
+                    patientRn: `RN${10000 + i}`,
+                    status: status,
+                    issuedAt: issuedDate.toISOString(),
+                    calledAt: calledDate ? calledDate.toISOString() : null,
+                    completedAt: completedDate ? completedDate.toISOString() : null,
+                    counterId: "1",
+                    counterName: "KAUNTER 1"
+                });
+            }
+
+            state.tickets = sampleTickets;
+            saveStateToStorage();
+            renderAllViews();
+            alert("Data contoh demo berjaya dijana!");
+        }
+
+        function confirmResetData() {
+            if (confirm("AMARAN: Adakah anda pasti mahu memadam semua data rekod tiket hari ini?")) {
+                state.tickets = [];
+                state.activeTicketId = null;
+                saveStateToStorage();
+                renderAllViews();
+                alert("Data berjaya direset.");
+            }
+        }
+    </script>
+</body>
+</html>
