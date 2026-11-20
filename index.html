@@ -20,14 +20,13 @@
     <!-- Firebase SDK v10 Modular Import via ES Modules -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot, collection, query, where, runTransaction, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
         window.FirebaseModule = {
-            initializeApp,
-            getFirestore,
-            doc,
-            setDoc,
-            onSnapshot
+            initializeApp, getFirestore, doc, setDoc, getDoc, deleteDoc, onSnapshot,
+            collection, query, where, runTransaction, writeBatch,
+            getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut
         };
     </script>
 
@@ -152,7 +151,7 @@
                             Unit Farmasi <span class="pastel-gradient-text">KK Permatang Badak</span>
                         </h1>
                         <span class="bg-sky-100 text-sky-800 font-extrabold text-[10px] px-2.5 py-0.5 rounded-full border border-sky-200 uppercase tracking-wider">
-                            QMS v3.4 Pro
+                            QMS v3.6 Pro
                         </span>
                     </div>
                     <p class="text-xs font-semibold text-slate-600">
@@ -174,6 +173,12 @@
                     <div id="liveDate" class="text-[10px] font-bold text-slate-700">Ahad, 4 Okt 2026</div>
                 </div>
 
+                <div id="authUserBox" style="display:none" class="items-center gap-2 bg-white/90 px-3 py-1.5 rounded-2xl border border-sky-200 shadow-sm text-xs text-slate-700">
+                    <i class="fa-solid fa-user-check text-emerald-500"></i>
+                    <span id="authUserEmail" class="font-bold max-w-[160px] truncate"></span>
+                    <button onclick="handleLogout()" class="text-rose-600 font-bold hover:underline">Keluar</button>
+                </div>
+
                 <button onclick="toggleSound()" id="soundToggleBtn" title="Togol Bunyi Suara Panggilan" class="p-2.5 rounded-2xl bg-white hover:bg-sky-50 text-sky-600 border border-sky-200 shadow-sm transition">
                     <i id="soundIcon" class="fa-solid fa-volume-high text-base"></i>
                 </button>
@@ -187,6 +192,9 @@
             </button>
             <button onclick="switchTab('issue')" id="tab-issue" class="tab-btn py-3 px-3 flex items-center gap-2 whitespace-nowrap hover:text-sky-700 transition">
                 <i class="fa-solid fa-ticket text-pink-500"></i> Pendaftaran Tiket
+            </button>
+            <button onclick="switchTab('spub')" id="tab-spub" class="tab-btn py-3 px-3 flex items-center gap-2 whitespace-nowrap hover:text-sky-700 transition">
+                <i class="fa-solid fa-box-archive text-amber-500"></i> Pengurusan SPUB <span id="spubTabBadge" class="hidden"></span>
             </button>
             <button onclick="switchTab('display')" id="tab-display" class="tab-btn py-3 px-3 flex items-center gap-2 whitespace-nowrap hover:text-sky-700 transition">
                 <i class="fa-solid fa-tv text-indigo-500"></i> Paparan TV
@@ -277,6 +285,20 @@
                 </div>
             </div>
 
+            <div id="spubDashCard" class="glass-card p-4 rounded-3xl">
+                <div class="flex items-center justify-between gap-3 flex-wrap">
+                    <div class="flex items-center gap-3">
+                        <div class="p-3 bg-amber-100 text-amber-700 rounded-2xl"><i class="fa-solid fa-box-archive"></i></div>
+                        <div>
+                            <h2 class="text-sm font-black text-slate-900 uppercase tracking-wide">Tindakan SPUB</h2>
+                            <p id="spubDashSummary" class="text-xs text-slate-500">Memuatkan...</p>
+                        </div>
+                    </div>
+                    <button onclick="switchTab('spub')" class="text-xs font-bold px-3.5 py-2 rounded-xl bg-white border border-sky-200 text-sky-800 hover:bg-sky-50">Buka Pengurusan SPUB</button>
+                </div>
+                <div id="spubDashList" class="mt-3 space-y-2"></div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
                 <!-- Main Calling Screen -->
                 <div class="lg:col-span-7 space-y-6">
@@ -330,6 +352,8 @@
                                     </div>
                                 </div>
                             </div>
+
+                            <div id="activeSpubBanner" class="hidden relative z-10 mt-5"></div>
 
                             <!-- Pharmacist Action Buttons -->
                             <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mt-8 pt-6 border-t border-slate-800">
@@ -410,7 +434,7 @@
                                 <label class="block text-xs font-extrabold text-slate-900 uppercase tracking-wider mb-2">
                                     <i class="fa-solid fa-user-pen text-sky-600 mr-1"></i> Nama Pesakit <span class="text-rose-500">*</span>
                                 </label>
-                                <input type="text" id="patientNameInput" required placeholder="CONTOH: AHMAD BIN RAZAK" class="w-full bg-white/80 border border-sky-200 rounded-2xl px-4 py-3.5 text-sm font-extrabold text-slate-800 focus:ring-2 focus:ring-sky-500 outline-none uppercase shadow-sm">
+                                <input type="text" id="patientNameInput" oninput="updateSpubLookup()" required placeholder="CONTOH: AHMAD BIN RAZAK" class="w-full bg-white/80 border border-sky-200 rounded-2xl px-4 py-3.5 text-sm font-extrabold text-slate-800 focus:ring-2 focus:ring-sky-500 outline-none uppercase shadow-sm">
                             </div>
 
                             <div>
@@ -426,6 +450,15 @@
                                 </label>
                                 <input type="text" id="customTicketNumInput" placeholder="CONTOH: A1005" class="w-full bg-white/80 border border-sky-200 rounded-2xl px-4 py-3 text-sm font-mono font-semibold focus:ring-2 focus:ring-sky-500 outline-none uppercase shadow-sm">
                             </div>
+
+                            <div>
+                                <label for="patientKeyInput" class="block text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                                    MRN / 4 digit akhir IC <span class="text-slate-400 font-normal">(semak SPUB)</span>
+                                </label>
+                                <input type="text" id="patientKeyInput" oninput="updateSpubLookup()" maxlength="20" placeholder="CONTOH: 1234" class="w-full bg-white/80 border border-sky-200 rounded-2xl px-4 py-3 text-sm font-mono font-semibold focus:ring-2 focus:ring-sky-500 outline-none uppercase shadow-sm">
+                            </div>
+
+                            <div id="spubLookupBox" class="hidden md:col-span-2 rounded-2xl border border-amber-300 bg-amber-50 p-3 text-xs" role="status"></div>
                         </div>
 
                         <div>
@@ -479,6 +512,8 @@
                         <div class="text-xs text-slate-500 mt-1" id="slipRn">No. RN: RN109823</div>
                     </div>
 
+                    <div id="slipSpub" class="hidden print:hidden mb-3 text-left rounded-xl border border-amber-300 bg-amber-50 p-3 text-[11px] text-amber-900"></div>
+
                     <div class="text-[11px] text-slate-500 space-y-0.5">
                         <p>Masa Daftar: <span id="slipTime" class="font-bold text-slate-700">00:00:00</span></p>
                         <p class="text-sky-600 font-semibold italic">Sila tunggu di ruang legar sehingga nombor anda dipanggil.</p>
@@ -489,6 +524,33 @@
                     </button>
                 </div>
             </div>
+        </section>
+
+        <section id="sec-spub" class="tab-content hidden space-y-6">
+            <div class="glass-card rounded-3xl p-5 space-y-4">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h2 class="text-xl font-black text-slate-900 flex items-center gap-2"><i class="fa-solid fa-box-archive text-amber-600"></i> Pengurusan Ubat SPUB</h2>
+                        <p class="text-xs text-slate-500">Jejak SPUB In (stok diterima daripada PTj lain) dan SPUB Out (dirujuk keluar) sehingga tarikh temujanji doktor.</p>
+                    </div>
+                    <button onclick="openSpubForm()" class="pastel-btn text-white font-black text-sm px-5 py-3 rounded-2xl shadow-lg flex items-center justify-center gap-2"><i class="fa-solid fa-plus"></i> Kes SPUB Baru</button>
+                </div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <select id="spubDirFilter" onchange="setSpubFilter()" aria-label="Tapis arah SPUB" class="bg-white/80 border border-sky-200 text-xs rounded-xl px-3 py-2 font-medium outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="ALL">SPUB In &amp; Out</option>
+                        <option value="IN">SPUB In sahaja</option>
+                        <option value="OUT">SPUB Out sahaja</option>
+                    </select>
+                    <select id="spubStatusFilter" onchange="setSpubFilter()" aria-label="Tapis status kes" class="bg-white/80 border border-sky-200 text-xs rounded-xl px-3 py-2 font-medium outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="AKTIF">Kes aktif</option>
+                        <option value="SELESAI">Kes selesai</option>
+                        <option value="ALL">Semua</option>
+                    </select>
+                    <input type="text" id="spubSearch" oninput="setSpubFilter()" aria-label="Cari kes SPUB" placeholder="Cari nama / MRN / PTj / R1..." class="bg-white/80 border border-sky-200 text-xs rounded-xl px-3 py-2 w-full sm:w-64 outline-none focus:ring-2 focus:ring-sky-500 font-medium">
+                    <span id="spubCountBadge" class="bg-sky-100 text-sky-900 font-extrabold text-xs px-3 py-1 rounded-full border border-sky-200">0 kes</span>
+                </div>
+            </div>
+            <div id="spubCaseList" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
         </section>
 
         <section id="sec-display" class="tab-content hidden">
@@ -570,7 +632,7 @@
                         <p class="truncate">Sila sediakan kad pengenalan dan resit perkhidmatan semasa dipanggil ke kaunter.</p>
                     </div>
                     <div class="whitespace-nowrap font-bold text-sky-400">
-                        KKPB QMS Pastel v3.4
+                        KKPB QMS Pastel v3.6
                     </div>
                 </div>
             </div>
@@ -595,6 +657,13 @@
                         100%
                     </div>
                 </div>
+            </div>
+
+            <div class="glass-card rounded-3xl p-4 flex flex-wrap items-center gap-3 text-xs">
+                <span class="font-black text-slate-900 uppercase tracking-wide"><i class="fa-solid fa-calendar-days text-sky-600"></i> Tempoh laporan</span>
+                <label class="font-bold text-slate-700">Dari <input type="date" id="rptFrom" onchange="onReportRangeChange()" class="ml-1 bg-white/80 border border-sky-200 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-sky-500"></label>
+                <label class="font-bold text-slate-700">Hingga <input type="date" id="rptTo" onchange="onReportRangeChange()" class="ml-1 bg-white/80 border border-sky-200 rounded-xl px-3 py-1.5 outline-none focus:ring-2 focus:ring-sky-500"></label>
+                <span class="text-slate-500">Data 31 hari terakhir dimuatkan daripada cloud.</span>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -738,7 +807,7 @@
                             <h3 class="text-base font-black text-slate-900 flex items-center gap-2">
                                 <i class="fa-solid fa-cloud-arrow-up text-blue-600"></i> Penyamaan Firebase Cloud
                             </h3>
-                            <p class="text-xs text-slate-500">Konfigurasi Firebase Cloud Sync (anh-dapur-tracker)</p>
+                            <p class="text-xs text-slate-500">Konfigurasi Firebase Cloud Sync (kaunter-farmasi-kkpb)</p>
                         </div>
                         <label class="relative inline-flex items-center cursor-pointer">
                             <input type="checkbox" id="toggleFirebaseEnable" onchange="toggleFirebaseSync(this.checked)" checked class="sr-only peer">
@@ -751,19 +820,19 @@
                             <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                                 <div>
                                     <label class="block font-bold text-slate-700 mb-1">API Key</label>
-                                    <input type="text" id="fbApiKey" value="AIzaSyBGygu-4EFXTM_swuzRsNTofUTcb8Zhjg4" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
+                                    <input type="text" id="fbApiKey" value="AIzaSyCH5Nc4MPmjaVzTEth6jND0vutgt-3FFSY" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
                                 </div>
                                 <div>
                                     <label class="block font-bold text-slate-700 mb-1">Auth Domain</label>
-                                    <input type="text" id="fbAuthDomain" value="anh-dapur-tracker.firebaseapp.com" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
+                                    <input type="text" id="fbAuthDomain" value="kaunter-farmasi-kkpb.firebaseapp.com" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
                                 </div>
                                 <div>
                                     <label class="block font-bold text-slate-700 mb-1">Project ID</label>
-                                    <input type="text" id="fbProjectId" value="anh-dapur-tracker" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
+                                    <input type="text" id="fbProjectId" value="kaunter-farmasi-kkpb" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
                                 </div>
                                 <div>
                                     <label class="block font-bold text-slate-700 mb-1">App ID</label>
-                                    <input type="text" id="fbAppId" value="1:848828313735:web:f21aa0ba57ddb96dc88822" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
+                                    <input type="text" id="fbAppId" value="1:135697736625:web:f33666a213b490c6589390" class="w-full bg-white/80 border border-sky-200 rounded-xl px-3 py-2 font-mono focus:ring-sky-500 outline-none">
                                 </div>
                             </div>
 
@@ -822,6 +891,98 @@
 
         </div>
     </footer>
+
+    <!-- Login Overlay -->
+    <div id="loginOverlay" class="hidden fixed inset-0 z-[60] flex items-center justify-center p-4 bg-gradient-to-br from-sky-100 via-indigo-100 to-pink-100">
+        <div class="glass-card max-w-sm w-full rounded-3xl p-8 space-y-5 shadow-2xl">
+            <div class="text-center space-y-1">
+                <div class="inline-flex p-3.5 bg-sky-100 rounded-2xl text-sky-600 border border-sky-200"><i class="fa-solid fa-hospital text-3xl pastel-gradient-text"></i></div>
+                <h2 class="text-xl font-black font-display text-slate-900">QMS Farmasi KKPB</h2>
+                <p class="text-xs text-slate-500">Log masuk dengan akaun pegawai untuk meneruskan.</p>
+            </div>
+            <div id="loginChecking" class="text-center text-xs text-slate-500 py-4"><i class="fa-solid fa-spinner animate-spin mr-1"></i> Menyemak sesi...</div>
+            <form id="loginForm" onsubmit="handleLogin(event)" class="hidden space-y-4">
+                <label class="block text-xs font-bold text-slate-700">E-mel
+                    <input type="email" id="loginEmail" required autocomplete="username" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <label class="block text-xs font-bold text-slate-700">Kata laluan
+                    <input type="password" id="loginPassword" required autocomplete="current-password" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <p id="loginError" class="hidden text-xs text-rose-600 font-bold" role="alert"></p>
+                <button type="submit" id="loginBtn" class="w-full pastel-btn text-white font-black py-3 rounded-2xl text-sm shadow-lg disabled:opacity-50">Log Masuk</button>
+                <button type="button" onclick="continueLocalOnly()" class="w-full text-[11px] text-slate-500 hover:text-slate-700 underline">Tiada internet? Guna tanpa cloud (data setempat sahaja)</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SPUB Form Modal -->
+    <div id="spubFormModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <form onsubmit="saveSpubForm(event)" class="glass-card max-w-2xl w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-white max-h-[92vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-3 border-b border-sky-100">
+                <h3 id="spubFormTitle" class="font-black text-slate-900 text-base">Kes SPUB Baru</h3>
+                <button type="button" onclick="closeSpubForm()" class="text-slate-400 hover:text-slate-700 p-1" aria-label="Tutup"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+            <input type="hidden" id="spubFormId">
+            <fieldset class="flex flex-wrap gap-4 text-xs font-bold text-slate-800">
+                <legend class="sr-only">Arah SPUB</legend>
+                <label class="inline-flex items-center gap-2 cursor-pointer"><input type="radio" name="spubDirection" value="IN" checked onchange="setSpubFormLabels()"> SPUB In (diterima daripada PTj lain)</label>
+                <label class="inline-flex items-center gap-2 cursor-pointer"><input type="radio" name="spubDirection" value="OUT" onchange="setSpubFormLabels()"> SPUB Out (dirujuk ke PTj lain)</label>
+            </fieldset>
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                <label class="sm:col-span-2 block font-bold text-slate-700">Nama pesakit <span class="text-rose-500">*</span>
+                    <input type="text" id="spubName" required class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 text-sm font-bold uppercase outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <label class="block font-bold text-slate-700">MRN
+                    <input type="text" id="spubMrn" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 font-mono uppercase outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <label class="block font-bold text-slate-700">4 digit akhir No. IC
+                    <input type="text" id="spubIc4" inputmode="numeric" maxlength="4" pattern="[0-9]{4}" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 font-mono outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <label class="block font-bold text-slate-700"><span id="spubLblPtj">PTj yang membekal / merujuk</span> <span class="text-rose-500">*</span>
+                    <input type="text" id="spubPtj" list="spubPtjList" required class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-500">
+                    <datalist id="spubPtjList"></datalist>
+                </label>
+                <label class="block font-bold text-slate-700">Negeri PTj
+                    <select id="spubState" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-500"></select>
+                </label>
+                <label class="block font-bold text-slate-700">No. SPUB R1
+                    <input type="text" id="spubR1" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 font-mono uppercase outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <label class="block font-bold text-slate-700">Pegawai / telefon PTj
+                    <input type="text" id="spubContact" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <label class="block font-bold text-slate-700"><span id="spubLblReceived">Tarikh terima ubat (stok awal)</span> <span class="text-rose-500">*</span>
+                    <input type="date" id="spubReceived" required class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <label class="block font-bold text-slate-700">Tarikh temujanji doktor <span class="text-rose-500">*</span>
+                    <input type="date" id="spubAppt" required class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+                <label class="block font-bold text-slate-700">Ingatkan berapa hari awal
+                    <input type="number" id="spubLead" min="0" max="60" value="14" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 outline-none focus:ring-2 focus:ring-sky-500">
+                </label>
+            </div>
+            <div class="space-y-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-black text-slate-900 uppercase tracking-wide">Ubat <span class="text-rose-500">*</span></span>
+                    <button type="button" onclick="addSpubDrugRow()" class="text-xs font-bold text-sky-700 hover:underline"><i class="fa-solid fa-plus"></i> Tambah ubat</button>
+                </div>
+                <div id="spubDrugRows" class="space-y-2"></div>
+            </div>
+            <label class="block text-xs font-bold text-slate-700">Catatan kes
+                <textarea id="spubRemarks" rows="2" class="mt-1 w-full bg-white border border-sky-200 rounded-xl px-3 py-2.5 text-xs outline-none focus:ring-2 focus:ring-sky-500"></textarea>
+            </label>
+            <p class="text-[11px] text-slate-500">Senarai semak bulanan dijana automatik daripada tarikh terima hingga tarikh temujanji. Jika tarikh diubah, status bulan yang sudah diisi dikekalkan.</p>
+            <div class="flex justify-end gap-2 pt-1">
+                <button type="button" onclick="closeSpubForm()" class="text-xs font-bold px-4 py-2.5 rounded-xl bg-white border border-sky-200 text-slate-700 hover:bg-sky-50">Batal</button>
+                <button type="submit" class="pastel-btn text-white text-xs font-black px-5 py-2.5 rounded-xl">Simpan Kes</button>
+            </div>
+        </form>
+    </div>
+
+    <!-- SPUB Detail Modal -->
+    <div id="spubDetailModal" class="fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div id="spubDetailBody" class="glass-card max-w-3xl w-full rounded-3xl p-6 space-y-4 shadow-2xl border border-white max-h-[92vh] overflow-y-auto"></div>
+    </div>
 
     <!-- Info Modals -->
     <div id="aboutModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
@@ -891,12 +1052,153 @@
     </div>
 
     <script>
+        // ==== PURE LOGIC START (diuji berasingan; tiada akses DOM/Firebase) ====
+        const SPUB_LABELS = {
+            IN:  { BELUM: 'Belum indent', DIBUAT: 'Dah indent', TERIMA: 'Dah terima', ALT: 'Guna stok sendiri', TIADA: 'Tidak perlu' },
+            OUT: { BELUM: 'Belum hantar', DIBUAT: 'Dah pos / hantar', TERIMA: 'Disahkan diterima PTj', ALT: 'Pesakit ambil sendiri', TIADA: 'Tidak perlu' }
+        };
+        const SPUB_DONE = ['TERIMA', 'ALT', 'TIADA'];
+
+        function pad2(n) { return String(n).padStart(2, '0'); }
+        function dateKey(d) { return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`; }
+        function todayKey() { return dateKey(new Date()); }
+        function parseDateKey(s) { const p = String(s).split('-').map(Number); return new Date(p[0], p[1] - 1, p[2]); }
+        function addDaysKey(s, n) { const d = parseDateKey(s); d.setDate(d.getDate() + n); return dateKey(d); }
+        function addMonthsKey(s, n) {
+            const d = parseDateKey(s);
+            const day = d.getDate();
+            d.setDate(1);
+            d.setMonth(d.getMonth() + n);
+            const last = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+            d.setDate(Math.min(day, last));
+            return dateKey(d);
+        }
+        function diffDays(a, b) { return Math.round((parseDateKey(b) - parseDateKey(a)) / 86400000); }
+        function fmtDate(s) { if (!s) return '-'; const p = String(s).split('-'); return p.length === 3 ? `${p[2]}/${p[1]}/${p[0]}` : s; }
+
+        function esc(s) {
+            return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function normName(s) { return String(s || '').toUpperCase().replace(/\s+/g, ' ').trim(); }
+        function labelFor(direction, status) {
+            const set = SPUB_LABELS[direction] || SPUB_LABELS.IN;
+            return set[status] || status;
+        }
+        function verbFor(direction) { return direction === 'OUT' ? 'hantar' : 'indent'; }
+
+        // Satu baris per bulan bermula dari tarikh terima/hantar sehingga sebelum tarikh temujanji.
+        // Contoh: terima 1/12, temujanji 1/3 -> 3 baris (Dis, Jan, Feb).
+        function generateSchedule(direction, receivedKey, apptKey) {
+            const rows = [];
+            for (let i = 0; i < 24; i++) {
+                const start = addMonthsKey(receivedKey, i);
+                if (i > 0 && start >= apptKey) break;
+                const nextStart = addMonthsKey(receivedKey, i + 1);
+                let end = addDaysKey(nextStart, -1);
+                if (apptKey && end > apptKey) end = apptKey;
+                if (end < start) end = start;
+                rows.push({
+                    no: i + 1,
+                    periodStart: start,
+                    periodEnd: end,
+                    dueDate: start,
+                    status: i === 0 ? (direction === 'OUT' ? 'DIBUAT' : 'TERIMA') : 'BELUM',
+                    remarks: i === 0 ? (direction === 'OUT' ? 'Bekalan awal dihantar' : 'Stok awal diterima bersama SPUB R1') : '',
+                    updatedAt: null
+                });
+            }
+            return rows;
+        }
+
+        // Bila tarikh diubah, kekalkan status/catatan bagi bulan yang sama nombor.
+        function mergeSchedule(newRows, oldRows) {
+            return newRows.map((r, i) => {
+                const o = (oldRows || [])[i];
+                return o ? Object.assign({}, r, { status: o.status, remarks: o.remarks, updatedAt: o.updatedAt }) : r;
+            });
+        }
+
+        function currentRow(c, today) {
+            const rows = c.schedule || [];
+            if (!rows.length) return null;
+            let cur = rows[0];
+            rows.forEach(r => { if (r.dueDate <= today) cur = r; });
+            return cur;
+        }
+
+        function computeSpubAlerts(cases, today) {
+            const out = [];
+            (cases || []).forEach(c => {
+                if (c.status !== 'AKTIF') return;
+                const lead = Number.isFinite(c.leadDays) ? c.leadDays : 14;
+                const verb = verbFor(c.direction);
+                let pending = 0;
+                const mk = (level, text, sortKey) => out.push({ caseId: c.id, level, text, sortKey, name: c.patientName || '' });
+                (c.schedule || []).forEach(r => {
+                    if (SPUB_DONE.includes(r.status)) return;
+                    pending++;
+                    const indentBy = addDaysKey(r.dueDate, -lead);
+                    if (r.status === 'BELUM') {
+                        if (today > r.dueDate) mk('merah', `Bulan ${r.no}: belum ${verb}, tarikh bekalan ${fmtDate(r.dueDate)} sudah lepas`, r.dueDate);
+                        else if (today >= indentBy) mk('kuning', `Bulan ${r.no}: perlu ${verb} sebelum ${fmtDate(r.dueDate)}`, r.dueDate);
+                    } else if (r.status === 'DIBUAT' && today > r.dueDate) {
+                        mk('merah', `Bulan ${r.no}: sudah ${verb} tetapi belum disahkan terima`, r.dueDate);
+                    }
+                });
+                if (c.appointmentDate) {
+                    const d = diffDays(today, c.appointmentDate);
+                    if (d < 0) mk('merah', `Temujanji ${fmtDate(c.appointmentDate)} sudah lepas, sila tutup kes`, c.appointmentDate);
+                    else if (d <= 14 && pending > 0) mk('kuning', `Temujanji ${d} hari lagi, semak baki stok`, c.appointmentDate);
+                }
+            });
+            out.sort((a, b) => (a.level === b.level ? (a.sortKey < b.sortKey ? -1 : a.sortKey > b.sortKey ? 1 : 0) : (a.level === 'merah' ? -1 : 1)));
+            return out;
+        }
+
+        // Padanan semasa daftar tiket: MRN tepat, atau 4 digit IC (dengan nama sepadan jika ada), atau nama.
+        function matchSpubCases(cases, name, key) {
+            const n = normName(name);
+            const k = String(key || '').trim().toUpperCase();
+            const digits = k.replace(/\D/g, '');
+            const nameLike = cn => n.length >= 3 && (cn === n || cn.includes(n) || (cn.length >= 4 && n.includes(cn)));
+            return (cases || []).filter(c => {
+                if (c.status !== 'AKTIF') return false;
+                const cn = normName(c.patientName);
+                if (k && c.mrn && String(c.mrn).toUpperCase() === k) return true;
+                if (digits.length === 4 && c.icLast4 === digits && (n.length < 3 || nameLike(cn))) return true;
+                return nameLike(cn);
+            });
+        }
+
+        function spubSummaryLine(c, today) {
+            const dirLabel = c.direction === 'OUT' ? 'SPUB Out' : 'SPUB In';
+            const cur = currentRow(c, today);
+            const total = (c.schedule || []).length;
+            let appt = '';
+            if (c.appointmentDate) {
+                const d = diffDays(today, c.appointmentDate);
+                appt = d >= 0 ? ` · temujanji ${fmtDate(c.appointmentDate)} (${d} hari lagi)` : ` · temujanji ${fmtDate(c.appointmentDate)} (lepas ${-d} hari)`;
+            }
+            const month = cur ? ` · bulan ${cur.no}/${total}: ${labelFor(c.direction, cur.status)}` : '';
+            return `${dirLabel} · ${c.ptj || '-'}${c.ptjState ? ' (' + c.ptjState + ')' : ''}${appt}${month}`;
+        }
+        // ==== PURE LOGIC END ====
+
+
+        // ==== STATE & STORAGE ====
         const APP_STORAGE_KEY = "KKPB_PASTEL_QMS_V3_4";
         const ADMIN_PASS = "990816";
 
+        // Koleksi Firestore (satu dokumen per rekod, bukan satu dokumen besar)
+        const COL_TICKETS = "kkpb_tickets";
+        const COL_SPUB = "kkpb_spub";
+        const COL_META = "kkpb_meta";
+        const COL_COUNTERS = "kkpb_counters";
+                const HISTORY_DAYS = 31;
+
         let state = {
             tickets: [],
-            activeTicketId: null,
+            spub: [],
             selectedCounterId: "1",
             counters: [
                 { id: "1", name: "KAUNTER 1", active: true },
@@ -910,53 +1212,359 @@
             callMode: "priority",
             firebaseEnabled: true,
             firebaseConfig: {
-                apiKey: "AIzaSyBGygu-4EFXTM_swuzRsNTofUTcb8Zhjg4",
-                authDomain: "anh-dapur-tracker.firebaseapp.com",
-                projectId: "anh-dapur-tracker",
-                appId: "1:848828313735:web:f21aa0ba57ddb96dc88822"
+                apiKey: "AIzaSyCH5Nc4MPmjaVzTEth6jND0vutgt-3FFSY",
+                authDomain: "kaunter-farmasi-kkpb.firebaseapp.com",
+                projectId: "kaunter-farmasi-kkpb",
+                appId: "1:135697736625:web:f33666a213b490c6589390"
             }
         };
 
         let isAdminUnlocked = false;
-
         let liveTimersInterval = null;
         let peakChartInstance = null;
         let categoryChartInstance = null;
         let firebaseApp = null;
         let firebaseDb = null;
-        let unsubscribeFirestore = null;
+        let firebaseAuth = null;
+        let currentUser = null;
+        let wasSignedIn = false;
+        let localOnlySession = false;
+        let spubUploadAsked = false;
+        let unsubs = [];
+        let fbInitTries = 0;
+        let lastDayKey = todayKey();
+        let openSpubId = null;
+        let spubFilter = { dir: 'ALL', status: 'AKTIF', q: '' };
 
-        window.onload = function() {
+        const iso = () => new Date().toISOString();
+        const byIssued = (a, b) => new Date(a.issuedAt) - new Date(b.issuedAt);
+        const clean = o => JSON.parse(JSON.stringify(o));
+
+        function fbReady() {
+            return !!(state.firebaseEnabled && firebaseDb && currentUser && window.FirebaseModule);
+        }
+
+        function saveLocal() {
+            try { localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(state)); }
+            catch (e) { console.error("Ralat LocalStorage:", e); }
+        }
+
+        function setSyncBadge(text, mode) {
+            const dot = document.getElementById('syncDot');
+            const label = document.getElementById('syncText');
+            if (!dot || !label) return;
+            label.textContent = text;
+            dot.className = "w-2.5 h-2.5 rounded-full " + (mode === 'ok' ? "bg-emerald-400 animate-ping" : mode === 'error' ? "bg-rose-500" : "bg-amber-400");
+        }
+
+        function setConnStatus(text) {
+            const el = document.getElementById('firebaseConnStatus');
+            if (el) el.textContent = text;
+        }
+
+        function cloudSet(col, id, data) {
+            if (!fbReady()) return Promise.resolve();
+            const { doc, setDoc } = window.FirebaseModule;
+            return setDoc(doc(firebaseDb, col, id), clean(data)).catch(e => {
+                console.error("Ralat Firebase:", e);
+                setSyncBadge("Ralat sync", 'error');
+            });
+        }
+
+        function persistTicket(t) { saveLocal(); return cloudSet(COL_TICKETS, t.id, t); }
+        function persistSpub(c) { c.updatedAt = iso(); saveLocal(); return cloudSet(COL_SPUB, c.id, c); }
+        function persistConfig() { saveLocal(); return cloudSet(COL_META, 'config', { counters: state.counters, updatedAt: iso() }); }
+
+        function loadStateFromStorage() {
+            const stored = localStorage.getItem(APP_STORAGE_KEY);
+            if (stored) {
+                try {
+                    const p = JSON.parse(stored);
+                    state.tickets = p.tickets || [];
+                    state.spub = p.spub || [];
+                    state.selectedCounterId = p.selectedCounterId || "1";
+                    state.counters = p.counters || state.counters;
+                    state.soundEnabled = p.soundEnabled !== undefined ? p.soundEnabled : true;
+                    state.tvPrivacySensor = p.tvPrivacySensor || false;
+                    state.callMode = p.callMode || "priority";
+                    state.firebaseEnabled = p.firebaseEnabled !== undefined ? p.firebaseEnabled : true;
+                    // Projek lama (anh-dapur-tracker) ditinggalkan; guna konfigurasi lalai baharu.
+                    if (p.firebaseConfig && p.firebaseConfig.projectId && p.firebaseConfig.projectId !== 'anh-dapur-tracker') state.firebaseConfig = p.firebaseConfig;
+                } catch (e) { console.error("Ralat LocalStorage:", e); }
+            }
+            // Versi lama tiada dayKey; terbitkan daripada masa daftar.
+            state.tickets.forEach(t => { if (!t.dayKey) t.dayKey = dateKey(new Date(t.issuedAt)); });
+            updateSoundIcon();
+            updateStorageBadgeUI();
+            const radio = document.querySelector(`input[name="callMode"][value="${state.callMode}"]`);
+            if (radio) radio.checked = true;
+            const tvBtnText = document.getElementById('tvPrivacyText');
+            if (tvBtnText) {
+                tvBtnText.textContent = state.tvPrivacySensor ? "Sensored Name: ON" : "Sensored Name: OFF";
+                document.getElementById('tvPrivacyIcon').className = state.tvPrivacySensor ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
+            }
+        }
+
+        // ==== SELECTORS ====
+        function todayTickets() { const k = todayKey(); return state.tickets.filter(t => t.dayKey === k); }
+        function getActiveTicket(counterId) {
+            return state.tickets
+                .filter(t => t.status === 'DISPENSING' && t.counterId === counterId)
+                .sort((a, b) => new Date(b.calledAt) - new Date(a.calledAt))[0] || null;
+        }
+        function latestCalledTicket() {
+            return state.tickets
+                .filter(t => t.status === 'DISPENSING')
+                .sort((a, b) => new Date(b.calledAt) - new Date(a.calledAt))[0] || null;
+        }
+        function reportTickets() {
+            const from = (document.getElementById('rptFrom') || {}).value || todayKey();
+            const to = (document.getElementById('rptTo') || {}).value || todayKey();
+            return state.tickets.filter(t => t.dayKey >= from && t.dayKey <= to);
+        }
+
+        // ==== FIREBASE ====
+        function initFirebaseConnection() {
+            const cfg = state.firebaseConfig;
+            if (!cfg.apiKey || !cfg.projectId) { setConnStatus("Status: Maklumat API tidak lengkap."); hideLoginOverlay(); return; }
+            if (!window.FirebaseModule) {
+                if (++fbInitTries > 15) {
+                    setConnStatus("Status: Firebase tidak dapat dimuatkan, guna mod setempat.");
+                    setSyncBadge("Mod LocalStorage", 'local');
+                    hideLoginOverlay();
+                    return;
+                }
+                setTimeout(initFirebaseConnection, 1000);
+                return;
+            }
+            try {
+                const { initializeApp, getFirestore, getAuth, onAuthStateChanged } = window.FirebaseModule;
+                if (!firebaseApp) {
+                    firebaseApp = initializeApp(cfg);
+                    firebaseDb = getFirestore(firebaseApp);
+                    firebaseAuth = getAuth(firebaseApp);
+                    onAuthStateChanged(firebaseAuth, handleAuthChange);
+                } else if (currentUser) {
+                    subscribeFirestore();
+                }
+            } catch (e) {
+                setConnStatus("Ralat: " + e.message);
+                setSyncBadge("Ralat sync", 'error');
+                hideLoginOverlay();
+            }
+        }
+
+        // ==== AUTH ====
+        function showLoginChecking() {
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('loginChecking').classList.remove('hidden');
+            document.getElementById('loginForm').classList.add('hidden');
+        }
+        function showLoginForm() {
+            document.getElementById('loginOverlay').classList.remove('hidden');
+            document.getElementById('loginChecking').classList.add('hidden');
+            document.getElementById('loginForm').classList.remove('hidden');
+            const f = document.getElementById('loginEmail');
+            if (f) f.focus();
+        }
+        function hideLoginOverlay() { const o = document.getElementById('loginOverlay'); if (o) o.classList.add('hidden'); }
+
+        function updateAuthUI() {
+            const box = document.getElementById('authUserBox');
+            if (!box) return;
+            box.style.display = currentUser ? 'flex' : 'none';
+            document.getElementById('authUserEmail').textContent = currentUser ? (currentUser.email || '') : '';
+        }
+
+        function handleAuthChange(user) {
+            currentUser = user || null;
+            if (user) {
+                wasSignedIn = true;
+                localOnlySession = false;
+                hideLoginOverlay();
+                updateAuthUI();
+                subscribeFirestore();
+                setConnStatus("Status: Tersambung & Real-Time Sync!");
+                setSyncBadge("Firebase Live Sync", 'ok');
+            } else {
+                unsubs.forEach(u => { try { u(); } catch (e) { } });
+                unsubs = [];
+                updateAuthUI();
+                if (wasSignedIn) {
+                    // Log keluar: buang data pesakit daripada cache pelayar.
+                    wasSignedIn = false;
+                    state.tickets = [];
+                    state.spub = [];
+                    saveLocal();
+                    renderAllViews();
+                    updateSpubLookup();
+                }
+                setSyncBadge("Perlu log masuk", 'local');
+                if (!localOnlySession) showLoginForm();
+            }
+        }
+
+        async function handleLogin(event) {
+            event.preventDefault();
+            const err = document.getElementById('loginError');
+            const btn = document.getElementById('loginBtn');
+            err.classList.add('hidden');
+            if (!firebaseAuth) { err.textContent = "Firebase belum siap. Cuba sebentar lagi."; err.classList.remove('hidden'); return; }
+            btn.disabled = true;
+            try {
+                const email = document.getElementById('loginEmail').value.trim();
+                const pass = document.getElementById('loginPassword').value;
+                await window.FirebaseModule.signInWithEmailAndPassword(firebaseAuth, email, pass);
+                document.getElementById('loginPassword').value = '';
+            } catch (e) {
+                const msgs = {
+                    'auth/invalid-credential': 'E-mel atau kata laluan tidak tepat.',
+                    'auth/wrong-password': 'E-mel atau kata laluan tidak tepat.',
+                    'auth/user-not-found': 'E-mel atau kata laluan tidak tepat.',
+                    'auth/invalid-email': 'Format e-mel tidak sah.',
+                    'auth/too-many-requests': 'Terlalu banyak percubaan. Tunggu beberapa minit dan cuba lagi.',
+                    'auth/network-request-failed': 'Tiada sambungan internet. Semak rangkaian atau guna mod tanpa cloud.',
+                    'auth/user-disabled': 'Akaun ini telah dinyahaktifkan.'
+                };
+                err.textContent = msgs[e.code] || ('Log masuk gagal: ' + (e.message || e.code));
+                err.classList.remove('hidden');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
+        async function handleLogout() {
+            if (!firebaseAuth) return;
+            if (!confirm("Log keluar? Data pesakit pada pelayar ini akan dipadam (data dalam cloud kekal).")) return;
+            try { await window.FirebaseModule.signOut(firebaseAuth); }
+            catch (e) { alert("Log keluar gagal: " + e.message); }
+        }
+
+        function continueLocalOnly() {
+            if (!confirm("Guna tanpa cloud? Rekod hanya disimpan pada pelayar ini dan TIDAK dikongsi dengan kaunter lain. Gunakan hanya jika internet terputus.")) return;
+            localOnlySession = true;
+            hideLoginOverlay();
+            setSyncBadge("Mod setempat (belum log masuk)", 'error');
+        }
+
+        function subscribeFirestore() {
+            unsubs.forEach(u => { try { u(); } catch (e) { } });
+            unsubs = [];
+            const { collection, query, where, onSnapshot, doc } = window.FirebaseModule;
+            const cutoff = addDaysKey(todayKey(), -HISTORY_DAYS);
+            const onErr = e => {
+                console.error(e);
+                setSyncBadge("Ralat sync", 'error');
+                setConnStatus(e.code === 'permission-denied'
+                    ? "Ralat: akaun ini tidak dibenarkan. Semak peraturan Firestore dan senarai e-mel."
+                    : "Ralat: " + e.message);
+            };
+
+            unsubs.push(onSnapshot(query(collection(firebaseDb, COL_TICKETS), where('dayKey', '>=', cutoff)), snap => {
+                const fetched = snap.docs.map(d => d.data());
+                state.tickets = state.tickets.filter(t => t.dayKey < cutoff).concat(fetched);
+                saveLocal();
+                renderAllViews();
+            }, onErr));
+
+            unsubs.push(onSnapshot(collection(firebaseDb, COL_SPUB), snap => {
+                if (!snap.metadata.fromCache && snap.empty && state.spub.length && !spubUploadAsked) {
+                    // Cloud baharu kosong tetapi ada kes SPUB setempat: tawarkan muat naik sekali.
+                    spubUploadAsked = true;
+                    if (confirm(`Cloud ini masih kosong. Muat naik ${state.spub.length} kes SPUB yang ada pada pelayar ini?`)) {
+                        state.spub.forEach(c => persistSpub(c));
+                        return;
+                    }
+                }
+                state.spub = snap.docs.map(d => d.data());
+                saveLocal();
+                renderSpubViews();
+                updateSpubLookup();
+                renderCounterControlPanel();
+                renderWaitingQueueList();
+            }, onErr));
+
+            unsubs.push(onSnapshot(doc(firebaseDb, COL_META, 'config'), snap => {
+                if (snap.exists() && Array.isArray(snap.data().counters)) {
+                    state.counters = snap.data().counters;
+                    if (!state.counters.some(c => c.id === state.selectedCounterId) && state.counters.length) {
+                        state.selectedCounterId = state.counters[0].id;
+                    }
+                    saveLocal();
+                    renderAllViews();
+                } else if (!snap.exists()) {
+                    persistConfig();
+                }
+            }, onErr));
+        }
+
+        function updateStorageBadgeUI() {
+            if (state.firebaseEnabled) setSyncBadge("Firebase Live Sync", 'ok');
+            else setSyncBadge("Mod LocalStorage", 'local');
+        }
+
+        function toggleFirebaseSync(enabled) {
+            state.firebaseEnabled = enabled;
+            saveLocal();
+            updateStorageBadgeUI();
+            if (enabled) {
+                initFirebaseConnection();
+            } else {
+                unsubs.forEach(u => { try { u(); } catch (e) { } });
+                unsubs = [];
+                hideLoginOverlay();
+                setConnStatus("Status: Mod LocalStorage (Offline)");
+            }
+        }
+
+        function saveFirebaseConfigDirect(event) {
+            if (event) event.preventDefault();
+            state.firebaseConfig = {
+                apiKey: document.getElementById('fbApiKey').value.trim(),
+                authDomain: document.getElementById('fbAuthDomain').value.trim(),
+                projectId: document.getElementById('fbProjectId').value.trim(),
+                appId: document.getElementById('fbAppId').value.trim()
+            };
+            state.firebaseEnabled = true;
+            saveLocal();
+            alert("Konfigurasi disimpan. Halaman akan dimuat semula untuk menyambung.");
+            location.reload();
+        }
+
+        // ==== LIFECYCLE ====
+        window.onload = function () {
             loadStateFromStorage();
+            ensureReportDefaults();
             startClock();
             startLiveTimers();
+            buildSpubStaticUI();
+            fillFirebaseForm();
             renderAllViews();
-            initCharts();
+            if (typeof Chart !== 'undefined') initCharts();
             document.getElementById('yearSpan').textContent = new Date().getFullYear();
-
-            if (state.firebaseEnabled) {
-                initFirebaseConnection();
-            }
+            if (state.firebaseEnabled) { showLoginChecking(); initFirebaseConnection(); }
         };
+
+        function fillFirebaseForm() {
+            const c = state.firebaseConfig;
+            const map = { fbApiKey: c.apiKey, fbAuthDomain: c.authDomain, fbProjectId: c.projectId, fbAppId: c.appId };
+            Object.entries(map).forEach(([id, v]) => { const el = document.getElementById(id); if (el) el.value = v || ''; });
+            document.getElementById('toggleFirebaseEnable').checked = !!state.firebaseEnabled;
+        }
 
         function switchTab(tabName) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
             document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
-
             document.getElementById(`sec-${tabName}`).classList.remove('hidden');
             document.getElementById(`tab-${tabName}`).classList.add('active');
-
-            if (tabName === 'settings') {
-                updateSettingsAccessUI();
-            } else if (tabName === 'analytics') {
-                updateCharts();
-            }
+            if (tabName === 'settings') updateSettingsAccessUI();
+            else if (tabName === 'analytics') { ensureReportDefaults(); updateCharts(); renderLogTable(); }
+            else if (tabName === 'spub') renderSpubViews();
         }
 
         function handleSettingsPasswordUnlock(event) {
             event.preventDefault();
             const inputPass = document.getElementById('tabAdminPasswordInput').value.trim();
-
             if (inputPass === ADMIN_PASS) {
                 isAdminUnlocked = true;
                 document.getElementById('tabPasswordErrorText').classList.add('hidden');
@@ -966,160 +1574,31 @@
                 document.getElementById('tabPasswordErrorText').classList.remove('hidden');
             }
         }
-
-        function lockAdminAccess() {
-            isAdminUnlocked = false;
-            updateSettingsAccessUI();
-        }
-
+        function lockAdminAccess() { isAdminUnlocked = false; updateSettingsAccessUI(); }
         function updateSettingsAccessUI() {
-            const lockScreen = document.getElementById('settingsLockScreen');
-            const protectedContent = document.getElementById('settingsProtectedContent');
-
-            if (isAdminUnlocked) {
-                lockScreen.classList.add('hidden');
-                protectedContent.classList.remove('hidden');
-            } else {
-                lockScreen.classList.remove('hidden');
-                protectedContent.classList.add('hidden');
-            }
+            document.getElementById('settingsLockScreen').classList.toggle('hidden', isAdminUnlocked);
+            document.getElementById('settingsProtectedContent').classList.toggle('hidden', !isAdminUnlocked);
         }
 
-        function saveStateToStorage() {
-            localStorage.setItem(APP_STORAGE_KEY, JSON.stringify(state));
-
-            if (state.firebaseEnabled && firebaseDb && window.FirebaseModule) {
-                try {
-                    const { doc, setDoc } = window.FirebaseModule;
-                    const docRef = doc(firebaseDb, "pharmacy_qms", "kk_permatang_badak");
-                    setDoc(docRef, {
-                        tickets: state.tickets,
-                        activeTicketId: state.activeTicketId,
-                        counters: state.counters,
-                        selectedCounterId: state.selectedCounterId,
-                        updatedAt: new Date().toISOString()
-                    }, { merge: true });
-                } catch (e) {
-                    console.error("Ralat Firebase:", e);
-                }
-            }
-        }
-
-        function loadStateFromStorage() {
-            const stored = localStorage.getItem(APP_STORAGE_KEY);
-            if (stored) {
-                try {
-                    const parsed = JSON.parse(stored);
-                    state.tickets = parsed.tickets || [];
-                    state.activeTicketId = parsed.activeTicketId || null;
-                    state.selectedCounterId = parsed.selectedCounterId || "1";
-                    state.counters = parsed.counters || state.counters;
-                    state.soundEnabled = parsed.soundEnabled !== undefined ? parsed.soundEnabled : true;
-                    state.tvPrivacySensor = parsed.tvPrivacySensor || false;
-                    state.callMode = parsed.callMode || "priority";
-                    state.firebaseEnabled = parsed.firebaseEnabled !== undefined ? parsed.firebaseEnabled : true;
-                    if (parsed.firebaseConfig) state.firebaseConfig = parsed.firebaseConfig;
-                } catch (e) {
-                    console.error("Ralat LocalStorage:", e);
-                }
-            }
-            updateSoundIcon();
-            updateStorageBadgeUI();
-        }
-
-        function toggleFirebaseSync(enabled) {
-            state.firebaseEnabled = enabled;
-            saveStateToStorage();
-            updateStorageBadgeUI();
-
-            if (enabled) {
-                initFirebaseConnection();
-            } else {
-                if (unsubscribeFirestore) unsubscribeFirestore();
-                document.getElementById('firebaseConnStatus').textContent = "Status: Mod LocalStorage (Offline)";
-            }
-        }
-
-        function saveFirebaseConfigDirect(event) {
-            if (event) event.preventDefault();
-
-            state.firebaseConfig = {
-                apiKey: document.getElementById('fbApiKey').value.trim(),
-                authDomain: document.getElementById('fbAuthDomain').value.trim(),
-                projectId: document.getElementById('fbProjectId').value.trim(),
-                appId: document.getElementById('fbAppId').value.trim()
-            };
-            state.firebaseEnabled = true;
-            document.getElementById('toggleFirebaseEnable').checked = true;
-
-            saveStateToStorage();
-            updateStorageBadgeUI();
-            initFirebaseConnection();
-            alert("Konfigurasi Firebase berjaya dikemaskini.");
-        }
-
-        function initFirebaseConnection() {
-            const cfg = state.firebaseConfig;
-            if (!cfg.apiKey || !cfg.projectId) {
-                document.getElementById('firebaseConnStatus').textContent = "Status: Maklumat API tidak lengkap.";
-                return;
-            }
-
-            if (!window.FirebaseModule) {
-                setTimeout(initFirebaseConnection, 1000);
-                return;
-            }
-
-            try {
-                const { initializeApp, getFirestore, doc, onSnapshot } = window.FirebaseModule;
-                firebaseApp = initializeApp(cfg);
-                firebaseDb = getFirestore(firebaseApp);
-
-                document.getElementById('firebaseConnStatus').textContent = "Status: Tersambung & Real-Time Sync!";
-
-                const docRef = doc(firebaseDb, "pharmacy_qms", "kk_permatang_badak");
-                unsubscribeFirestore = onSnapshot(docRef, (snapshot) => {
-                    if (snapshot.exists()) {
-                        const data = snapshot.data();
-                        if (data.tickets) {
-                            state.tickets = data.tickets;
-                            state.activeTicketId = data.activeTicketId;
-                            if (data.counters) state.counters = data.counters;
-                            renderAllViews();
-                        }
-                    }
-                });
-            } catch (e) {
-                document.getElementById('firebaseConnStatus').textContent = "Ralat: " + e.message;
-            }
-        }
-
-        function updateStorageBadgeUI() {
-            const badgeDot = document.getElementById('syncDot');
-            const badgeText = document.getElementById('syncText');
-
-            if (state.firebaseEnabled) {
-                badgeDot.className = "w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping";
-                badgeText.textContent = "Firebase Live Sync";
-            } else {
-                badgeDot.className = "w-2.5 h-2.5 rounded-full bg-amber-400";
-                badgeText.textContent = "Mod LocalStorage";
-            }
-        }
-
+        // ==== CLOCK & TIMERS ====
         function startClock() {
             function update() {
                 const now = new Date();
                 const timeStr = now.toLocaleTimeString('en-US', { hour12: true });
                 const dateStr = now.toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-                
                 document.getElementById('liveClock').textContent = timeStr;
                 document.getElementById('liveDate').textContent = dateStr;
-
                 const tvClock = document.getElementById('tvClock');
                 const tvDate = document.getElementById('tvDate');
                 if (tvClock) tvClock.textContent = timeStr;
                 if (tvDate) tvDate.textContent = now.toLocaleDateString('ms-MY');
+                // Hari baharu: segarkan statistik, tetingkap sejarah dan amaran SPUB.
+                if (todayKey() !== lastDayKey) {
+                    lastDayKey = todayKey();
+                    if (fbReady()) subscribeFirestore();
+                    ensureReportDefaults(true);
+                    renderAllViews();
+                }
             }
             update();
             setInterval(update, 1000);
@@ -1127,311 +1606,267 @@
 
         function startLiveTimers() {
             if (liveTimersInterval) clearInterval(liveTimersInterval);
-            liveTimersInterval = setInterval(() => {
-                updateActiveTicketTimers();
-            }, 1000);
+            liveTimersInterval = setInterval(updateActiveTicketTimers, 1000);
         }
 
         function updateActiveTicketTimers() {
-            const activeId = state.activeTicketId;
-            const waitTimerEl = document.getElementById('liveWaitTimer');
-            const dispenseTimerEl = document.getElementById('liveDispenseTimer');
-
-            if (!activeId) {
-                waitTimerEl.textContent = "00:00";
-                dispenseTimerEl.textContent = "00:00";
-                return;
-            }
-
-            const ticket = state.tickets.find(t => t.id === activeId);
-            if (!ticket) return;
-
+            const waitEl = document.getElementById('liveWaitTimer');
+            const dispEl = document.getElementById('liveDispenseTimer');
+            const t = getActiveTicket(state.selectedCounterId);
+            if (!t) { waitEl.textContent = "00:00"; dispEl.textContent = "00:00"; return; }
             const now = new Date();
-
-            let waitMs = ticket.calledAt ? (new Date(ticket.calledAt) - new Date(ticket.issuedAt)) : (now - new Date(ticket.issuedAt));
-            waitTimerEl.textContent = formatDuration(waitMs);
-
-            let dispenseMs = 0;
-            if (ticket.calledAt) {
-                dispenseMs = ticket.completedAt ? (new Date(ticket.completedAt) - new Date(ticket.calledAt)) : (now - new Date(ticket.calledAt));
-            }
-            dispenseTimerEl.textContent = formatDuration(dispenseMs);
+            const waitMs = t.calledAt ? (new Date(t.calledAt) - new Date(t.issuedAt)) : (now - new Date(t.issuedAt));
+            waitEl.textContent = formatDuration(waitMs);
+            const dispMs = t.calledAt ? (t.completedAt ? new Date(t.completedAt) - new Date(t.calledAt) : now - new Date(t.calledAt)) : 0;
+            dispEl.textContent = formatDuration(dispMs);
         }
 
         function formatDuration(ms) {
             if (ms < 0) ms = 0;
-            const totalSeconds = Math.floor(ms / 1000);
-            const mins = Math.floor(totalSeconds / 60);
-            const secs = totalSeconds % 60;
-            return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            const total = Math.floor(ms / 1000);
+            return `${String(Math.floor(total / 60)).padStart(2, '0')}:${String(total % 60).padStart(2, '0')}`;
         }
 
-        function openFooterModal(modalId) {
-            document.getElementById(modalId).classList.remove('hidden');
-        }
+        function openFooterModal(id) { document.getElementById(id).classList.remove('hidden'); }
+        function closeFooterModal(id) { document.getElementById(id).classList.add('hidden'); }
 
-        function closeFooterModal(modalId) {
-            document.getElementById(modalId).classList.add('hidden');
-        }
-
+        // ==== COUNTERS ====
         function selectActiveCounter(counterId) {
             state.selectedCounterId = counterId;
-            saveStateToStorage();
+            saveLocal();
             renderCounterSelectorUI();
             renderCounterControlPanel();
+            updateActiveTicketTimers();
         }
 
         function handleAddCounter(event) {
             event.preventDefault();
             const input = document.getElementById('newCounterNameInput');
             const name = input.value.trim().toUpperCase();
-
             if (!name) return;
-
-            const newId = String(Date.now());
-            state.counters.push({ id: newId, name: name, active: true });
+            state.counters.push({ id: String(Date.now()), name, active: true });
             input.value = '';
-
-            saveStateToStorage();
+            persistConfig();
             renderAllViews();
         }
-
         function toggleCounterActive(counterId) {
-            const counter = state.counters.find(c => c.id === counterId);
-            if (counter) {
-                counter.active = !counter.active;
-                saveStateToStorage();
-                renderAllViews();
-            }
+            const c = state.counters.find(x => x.id === counterId);
+            if (c) { c.active = !c.active; persistConfig(); renderAllViews(); }
         }
-
         function deleteCounter(counterId) {
-            if (confirm("Padam kaunter ini?")) {
-                state.counters = state.counters.filter(c => c.id !== counterId);
-                if (state.selectedCounterId === counterId && state.counters.length > 0) {
-                    state.selectedCounterId = state.counters[0].id;
-                }
-                saveStateToStorage();
-                renderAllViews();
-            }
+            if (!confirm("Padam kaunter ini?")) return;
+            state.counters = state.counters.filter(c => c.id !== counterId);
+            if (state.selectedCounterId === counterId && state.counters.length > 0) state.selectedCounterId = state.counters[0].id;
+            persistConfig();
+            renderAllViews();
         }
 
-        function handleIssueTicket(event) {
-            event.preventDefault();
-
-            const category = document.querySelector('input[name="ticketCategory"]:checked').value;
-            const patientName = document.getElementById('patientNameInput').value.trim().toUpperCase();
-            const patientRn = document.getElementById('patientRnInput').value.trim().toUpperCase() || 'TIADA';
-            const customNum = document.getElementById('customTicketNumInput').value.trim().toUpperCase();
-
-            let ticketNumber = customNum;
-
-            if (!ticketNumber) {
-                let prefix = "A";
-                let startNum = 1000;
-                if (category === "B") { prefix = "B"; startNum = 2000; }
-                if (category === "C") { prefix = "C"; startNum = 3000; }
-
-                const existingCatTickets = state.tickets.filter(t => t.category === category);
-                ticketNumber = `${prefix}${startNum + existingCatTickets.length + 1}`;
+        // ==== TICKETS ====
+        async function nextTicketNumber(category) {
+            const prefix = category;
+            const start = { A: 1000, B: 2000, C: 3000 }[category];
+            let n = null;
+            if (fbReady()) {
+                try {
+                    const { doc, runTransaction } = window.FirebaseModule;
+                    const ref = doc(firebaseDb, COL_COUNTERS, todayKey());
+                    n = await runTransaction(firebaseDb, async tx => {
+                        const s = await tx.get(ref);
+                        const cur = s.exists() ? (s.data()[category] || 0) : 0;
+                        tx.set(ref, { [category]: cur + 1 }, { merge: true });
+                        return cur + 1;
+                    });
+                } catch (e) { console.warn("Transaksi nombor tiket gagal, guna kiraan setempat.", e); }
             }
+            if (n === null) n = todayTickets().filter(t => t.category === category).length + 1;
+            // Elak bertindih dengan nombor manual hari ini.
+            let num = `${prefix}${start + n}`;
+            while (todayTickets().some(t => t.number === num)) { n++; num = `${prefix}${start + n}`; }
+            return num;
+        }
 
-            const newTicket = {
-                id: 'T_' + Date.now(),
-                number: ticketNumber,
-                category: category,
-                patientName: patientName,
-                patientRn: patientRn,
-                status: 'WAITING',
-                issuedAt: new Date().toISOString(),
-                calledAt: null,
-                completedAt: null,
-                counterId: null
-            };
+        async function handleIssueTicket(event) {
+            event.preventDefault();
+            const btn = event.target.querySelector('button[type="submit"]');
+            if (btn) btn.disabled = true;
+            try {
+                const category = document.querySelector('input[name="ticketCategory"]:checked').value;
+                const patientName = document.getElementById('patientNameInput').value.trim().toUpperCase();
+                const patientRn = document.getElementById('patientRnInput').value.trim().toUpperCase() || 'TIADA';
+                const patientKey = document.getElementById('patientKeyInput').value.trim().toUpperCase();
+                const customNum = document.getElementById('customTicketNumInput').value.trim().toUpperCase();
 
-            state.tickets.push(newTicket);
-            saveStateToStorage();
+                let ticketNumber = customNum;
+                if (ticketNumber && todayTickets().some(t => t.number === ticketNumber)) {
+                    alert(`Nombor tiket ${ticketNumber} sudah digunakan hari ini.`);
+                    return;
+                }
+                if (!ticketNumber) ticketNumber = await nextTicketNumber(category);
 
-            document.getElementById('patientNameInput').value = '';
-            document.getElementById('patientRnInput').value = '';
-            document.getElementById('customTicketNumInput').value = '';
+                const newTicket = {
+                    id: 'T_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                    number: ticketNumber,
+                    category, patientName, patientRn, patientKey,
+                    status: 'WAITING',
+                    dayKey: todayKey(),
+                    issuedAt: iso(),
+                    calledAt: null, completedAt: null, counterId: null
+                };
+                state.tickets.push(newTicket);
+                persistTicket(newTicket);
 
-            showPrintSlip(newTicket);
-            renderAllViews();
+                ['patientNameInput', 'patientRnInput', 'patientKeyInput', 'customTicketNumInput'].forEach(id => document.getElementById(id).value = '');
+                updateSpubLookup();
+                showPrintSlip(newTicket);
+                renderAllViews();
+            } finally {
+                if (btn) btn.disabled = false;
+            }
         }
 
         function showPrintSlip(ticket) {
-            const catNames = {
-                "A": "Kategori A - Pesakit Am",
-                "B": "Kategori B - Warga Emas / OKU",
-                "C": "Kategori C - Fast Track / Refill"
-            };
-
+            const catNames = { A: "Kategori A - Pesakit Am", B: "Kategori B - Warga Emas / OKU", C: "Kategori C - Fast Track / Refill" };
             document.getElementById('slipCategory').textContent = catNames[ticket.category] || "Kategori Am";
             document.getElementById('slipNumber').textContent = ticket.number;
             document.getElementById('slipPatient').textContent = `NAMA: ${ticket.patientName}`;
             document.getElementById('slipRn').textContent = `No. RN: ${ticket.patientRn}`;
             document.getElementById('slipTime').textContent = new Date(ticket.issuedAt).toLocaleTimeString('ms-MY');
-
+            const spubBox = document.getElementById('slipSpub');
+            const hits = matchSpubCases(state.spub, ticket.patientName, ticket.patientKey);
+            if (hits.length) {
+                spubBox.classList.remove('hidden');
+                spubBox.innerHTML = `<div class="font-black"><i class="fa-solid fa-triangle-exclamation"></i> Pesakit ini ada kes SPUB aktif. Semak stok sebelum bekal.</div>` +
+                    hits.slice(0, 2).map(c => `<div class="mt-1">${esc(spubSummaryLine(c, todayKey()))}</div>`).join('');
+            } else {
+                spubBox.classList.add('hidden');
+                spubBox.innerHTML = '';
+            }
             const slip = document.getElementById('ticketPrintSlip');
             slip.classList.remove('hidden');
             slip.scrollIntoView({ behavior: 'smooth' });
         }
+        function hidePrintSlip() { document.getElementById('ticketPrintSlip').classList.add('hidden'); }
 
-        function hidePrintSlip() {
-            document.getElementById('ticketPrintSlip').classList.add('hidden');
+        function updateCallMode(mode) { state.callMode = mode; saveLocal(); }
+
+        async function claimTicket(t, counter) {
+            const patch = { status: 'DISPENSING', calledAt: iso(), counterId: counter.id, counterName: counter.name };
+            if (fbReady()) {
+                try {
+                    const { doc, runTransaction } = window.FirebaseModule;
+                    const ref = doc(firebaseDb, COL_TICKETS, t.id);
+                    const won = await runTransaction(firebaseDb, async tx => {
+                        const s = await tx.get(ref);
+                        if (!s.exists()) { tx.set(ref, clean(Object.assign({}, t, patch))); return true; }
+                        if (s.data().status !== 'WAITING') return false;
+                        tx.update(ref, patch);
+                        return true;
+                    });
+                    if (!won) return false;
+                    Object.assign(t, patch);
+                    saveLocal();
+                    return true;
+                } catch (e) { console.warn("Transaksi panggilan gagal, guna kemaskini setempat.", e); }
+            }
+            Object.assign(t, patch);
+            persistTicket(t);
+            return true;
         }
 
-        function updateCallMode(mode) {
-            state.callMode = mode;
-            saveStateToStorage();
-        }
+        async function actionCallNext() {
+            const counter = state.counters.find(c => c.id === state.selectedCounterId);
+            if (!counter) { alert("Sila pilih kaunter."); return; }
 
-        function actionCallNext() {
-            if (state.activeTicketId) {
-                const currentTicket = state.tickets.find(t => t.id === state.activeTicketId);
-                if (currentTicket && currentTicket.status === 'DISPENSING') {
-                    currentTicket.status = 'COMPLETED';
-                    currentTicket.completedAt = new Date().toISOString();
-                }
+            const current = getActiveTicket(counter.id);
+            if (current) {
+                current.status = 'COMPLETED';
+                current.completedAt = iso();
+                persistTicket(current);
             }
 
-            let waitingQueue = state.tickets.filter(t => t.status === 'WAITING');
-
-            if (waitingQueue.length === 0) {
+            const queue = todayTickets().filter(t => t.status === 'WAITING').sort(byIssued);
+            if (queue.length === 0) {
                 alert("Tiada tiket menunggu dalam senarai.");
-                state.activeTicketId = null;
-                saveStateToStorage();
                 renderAllViews();
                 return;
             }
+            const ordered = state.callMode === "priority"
+                ? queue.filter(t => t.category === 'B').concat(queue.filter(t => t.category !== 'B'))
+                : queue;
 
-            let nextTicket = null;
-
-            if (state.callMode === "priority") {
-                const priorityB = waitingQueue.filter(t => t.category === 'B');
-                nextTicket = priorityB.length > 0 ? priorityB[0] : waitingQueue[0];
-            } else {
-                nextTicket = waitingQueue[0];
+            for (const cand of ordered.slice(0, 6)) {
+                if (await claimTicket(cand, counter)) {
+                    speakAnnouncement(cand.number, cand.patientName, counter.name);
+                    renderAllViews();
+                    return;
+                }
             }
-
-            const currentCounter = state.counters.find(c => c.id === state.selectedCounterId);
-            const counterName = currentCounter ? currentCounter.name : "KAUNTER";
-
-            nextTicket.status = 'DISPENSING';
-            nextTicket.calledAt = new Date().toISOString();
-            nextTicket.counterId = state.selectedCounterId;
-            nextTicket.counterName = counterName;
-
-            state.activeTicketId = nextTicket.id;
-            saveStateToStorage();
-
-            speakAnnouncement(nextTicket.number, nextTicket.patientName, counterName);
+            alert("Tiket telah dipanggil oleh kaunter lain. Sila cuba lagi.");
             renderAllViews();
         }
 
         function actionRecallCurrent() {
-            if (!state.activeTicketId) return;
-            const ticket = state.tickets.find(t => t.id === state.activeTicketId);
-            if (ticket) {
-                speakAnnouncement(ticket.number, ticket.patientName, ticket.counterName || "KAUNTER");
-            }
+            const t = getActiveTicket(state.selectedCounterId);
+            if (t) speakAnnouncement(t.number, t.patientName, t.counterName || "KAUNTER");
         }
-
         function actionCompleteCurrent() {
-            if (!state.activeTicketId) return;
-            const ticket = state.tickets.find(t => t.id === state.activeTicketId);
-            if (ticket) {
-                ticket.status = 'COMPLETED';
-                ticket.completedAt = new Date().toISOString();
-            }
-
-            state.activeTicketId = null;
-            saveStateToStorage();
+            const t = getActiveTicket(state.selectedCounterId);
+            if (!t) return;
+            t.status = 'COMPLETED';
+            t.completedAt = iso();
+            persistTicket(t);
             renderAllViews();
         }
-
         function actionNoShowCurrent() {
-            if (!state.activeTicketId) return;
-            const ticket = state.tickets.find(t => t.id === state.activeTicketId);
-            if (ticket) {
-                ticket.status = 'NO_SHOW';
-                ticket.completedAt = new Date().toISOString();
-            }
-
-            state.activeTicketId = null;
-            saveStateToStorage();
+            const t = getActiveTicket(state.selectedCounterId);
+            if (!t) return;
+            t.status = 'NO_SHOW';
+            t.completedAt = iso();
+            persistTicket(t);
             renderAllViews();
         }
 
-        function toggleSound() {
-            state.soundEnabled = !state.soundEnabled;
-            saveStateToStorage();
-            updateSoundIcon();
-        }
-
+        // ==== SOUND ====
+        function toggleSound() { state.soundEnabled = !state.soundEnabled; saveLocal(); updateSoundIcon(); }
         function updateSoundIcon() {
-            const icon = document.getElementById('soundIcon');
-            icon.className = state.soundEnabled ? "fa-solid fa-volume-high text-base text-sky-600" : "fa-solid fa-volume-xmark text-base text-rose-500";
+            document.getElementById('soundIcon').className = state.soundEnabled
+                ? "fa-solid fa-volume-high text-base text-sky-600" : "fa-solid fa-volume-xmark text-base text-rose-500";
         }
-
         function speakAnnouncement(ticketNumber, patientName, counterName) {
             if (!state.soundEnabled) return;
-
             playChimeBeep();
-
             setTimeout(() => {
                 if ('speechSynthesis' in window) {
                     window.speechSynthesis.cancel();
-
-                    const formattedNumber = ticketNumber.split('').join(' ');
-                    const textMalay = `Nombor tiket ${formattedNumber}, ${patientName}, sila ke ${counterName}`;
-
-                    const utterance = new SpeechSynthesisUtterance(textMalay);
+                    const formattedNumber = String(ticketNumber).split('').join(' ');
+                    const utterance = new SpeechSynthesisUtterance(`Nombor tiket ${formattedNumber}, ${patientName}, sila ke ${counterName}`);
                     utterance.lang = 'ms-MY';
                     utterance.rate = 0.85;
-
                     const voices = window.speechSynthesis.getVoices();
-                    const malayVoice = voices.find(v => v.lang.includes('ms') || v.lang.includes('id'));
-                    if (malayVoice) utterance.voice = malayVoice;
-
+                    const v = voices.find(x => x.lang.includes('ms') || x.lang.includes('id'));
+                    if (v) utterance.voice = v;
                     window.speechSynthesis.speak(utterance);
                 }
             }, 600);
         }
-
         function playChimeBeep() {
             try {
-                const AudioContext = window.AudioContext || window.webkitAudioContext;
-                if (!AudioContext) return;
-                const ctx = new AudioContext();
-
-                const osc1 = ctx.createOscillator();
-                const osc2 = ctx.createOscillator();
-                const gain = ctx.createGain();
-
-                osc1.type = 'sine';
-                osc2.type = 'sine';
-
+                const AC = window.AudioContext || window.webkitAudioContext;
+                if (!AC) return;
+                const ctx = new AC();
+                const osc1 = ctx.createOscillator(), osc2 = ctx.createOscillator(), gain = ctx.createGain();
+                osc1.type = 'sine'; osc2.type = 'sine';
                 osc1.frequency.setValueAtTime(523.25, ctx.currentTime);
                 osc2.frequency.setValueAtTime(659.25, ctx.currentTime + 0.15);
-
                 gain.gain.setValueAtTime(0.1, ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
-
-                osc1.connect(gain);
-                osc2.connect(gain);
-                gain.connect(ctx.destination);
-
-                osc1.start(ctx.currentTime);
-                osc1.stop(ctx.currentTime + 0.15);
-                osc2.start(ctx.currentTime + 0.15);
-                osc2.stop(ctx.currentTime + 0.5);
-            } catch (e) {
-                console.log("Audio Context disabled.");
-            }
+                osc1.connect(gain); osc2.connect(gain); gain.connect(ctx.destination);
+                osc1.start(ctx.currentTime); osc1.stop(ctx.currentTime + 0.15);
+                osc2.start(ctx.currentTime + 0.15); osc2.stop(ctx.currentTime + 0.5);
+            } catch (e) { console.log("Audio Context disabled."); }
         }
 
+        // ==== RENDER: QMS ====
         function renderAllViews() {
             renderSummaryKPIs();
             renderCounterSelectorUI();
@@ -1440,530 +1875,745 @@
             renderPublicTVDisplay();
             renderLogTable();
             renderSettingsCounterList();
+            renderSpubViews();
+            if (!document.getElementById('sec-analytics').classList.contains('hidden')) updateCharts();
+        }
+
+        function avgWaitMinutes(list) {
+            const done = list.filter(t => t.status === 'COMPLETED' && t.calledAt && t.issuedAt);
+            if (!done.length) return 0;
+            return done.reduce((s, t) => s + (new Date(t.calledAt) - new Date(t.issuedAt)), 0) / done.length / 60000;
         }
 
         function renderSummaryKPIs() {
-            const total = state.tickets.length;
-            const waiting = state.tickets.filter(t => t.status === 'WAITING').length;
-            const dispensing = state.tickets.filter(t => t.status === 'DISPENSING').length;
-            const completed = state.tickets.filter(t => t.status === 'COMPLETED').length;
-
-            const completedTickets = state.tickets.filter(t => t.status === 'COMPLETED' && t.calledAt && t.issuedAt);
-            let totalWaitMs = 0;
-            completedTickets.forEach(t => {
-                totalWaitMs += (new Date(t.calledAt) - new Date(t.issuedAt));
-            });
-
-            const avgWaitMins = completedTickets.length > 0 ? (totalWaitMs / completedTickets.length / 60000) : 0;
-
-            document.getElementById('statTotalTickets').textContent = total;
-            document.getElementById('statWaiting').textContent = waiting;
-            document.getElementById('statDispensing').textContent = dispensing;
-            document.getElementById('statCompleted').textContent = completed;
-            document.getElementById('statAvgWait').innerHTML = `${avgWaitMins.toFixed(1)} <span class="text-xs font-normal text-slate-500">min</span>`;
-
-            const kpiBadge = document.getElementById('kpiStatusBadge');
-            if (avgWaitMins <= state.kpiTargetMinutes) {
-                kpiBadge.className = "text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full inline-block mt-1";
-                kpiBadge.textContent = `KPI Cemerlang (< ${state.kpiTargetMinutes} min)`;
+            const list = todayTickets();
+            document.getElementById('statTotalTickets').textContent = list.length;
+            document.getElementById('statWaiting').textContent = list.filter(t => t.status === 'WAITING').length;
+            document.getElementById('statDispensing').textContent = list.filter(t => t.status === 'DISPENSING').length;
+            document.getElementById('statCompleted').textContent = list.filter(t => t.status === 'COMPLETED').length;
+            const avg = avgWaitMinutes(list);
+            document.getElementById('statAvgWait').innerHTML = `${avg.toFixed(1)} <span class="text-xs font-normal text-slate-500">min</span>`;
+            const badge = document.getElementById('kpiStatusBadge');
+            if (avg <= state.kpiTargetMinutes) {
+                badge.className = "text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full inline-block mt-1";
+                badge.textContent = `KPI Cemerlang (< ${state.kpiTargetMinutes} min)`;
             } else {
-                kpiBadge.className = "text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full inline-block mt-1";
-                kpiBadge.textContent = `Melebihi KPI (> ${state.kpiTargetMinutes} min)`;
+                badge.className = "text-[10px] font-bold text-rose-700 bg-rose-100 px-2 py-0.5 rounded-full inline-block mt-1";
+                badge.textContent = `Melebihi KPI (> ${state.kpiTargetMinutes} min)`;
             }
         }
 
         function renderCounterSelectorUI() {
             const container = document.getElementById('activeCounterSelectorContainer');
-            const activeCounters = state.counters.filter(c => c.active);
-
-            if (activeCounters.length === 0) {
+            const active = state.counters.filter(c => c.active);
+            if (!active.length) {
                 container.innerHTML = `<span class="text-xs text-rose-500 font-bold">Tiada kaunter aktif. Sila aktifkan di Tetapan.</span>`;
                 return;
             }
+            container.innerHTML = active.map(c => {
+                const cls = c.id === state.selectedCounterId ? "pastel-btn text-white shadow-md font-black" : "bg-white/80 hover:bg-white text-slate-700 border border-sky-200 font-bold";
+                return `<button data-id="${esc(c.id)}" onclick="selectActiveCounter(this.dataset.id)" class="px-3.5 py-2 rounded-2xl text-xs transition whitespace-nowrap ${cls}">${esc(c.name)}</button>`;
+            }).join('');
+        }
 
-            let html = '';
-            activeCounters.forEach(c => {
-                const isSelected = c.id === state.selectedCounterId;
-                const activeClass = isSelected ? "pastel-btn text-white shadow-md font-black" : "bg-white/80 hover:bg-white text-slate-700 border border-sky-200 font-bold";
-                html += `
-                    <button onclick="selectActiveCounter('${c.id}')" class="px-3.5 py-2 rounded-2xl text-xs transition whitespace-nowrap ${activeClass}">
-                        ${c.name}
-                    </button>
-                `;
-            });
-            container.innerHTML = html;
+        function renderActiveSpubBanner(ticket) {
+            const box = document.getElementById('activeSpubBanner');
+            if (!box) return;
+            const hits = ticket ? matchSpubCases(state.spub, ticket.patientName, ticket.patientKey) : [];
+            if (!hits.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            box.classList.remove('hidden');
+            box.innerHTML = `<div class="rounded-2xl border border-amber-400/60 bg-amber-400/15 text-amber-100 p-3 text-xs space-y-1">
+                <div class="font-black text-amber-300"><i class="fa-solid fa-box-archive"></i> KES SPUB AKTIF: semak stok sebelum bekal</div>
+                ${hits.slice(0, 2).map(c => `<div>${esc(c.patientName)}: ${esc(spubSummaryLine(c, todayKey()))}</div>`).join('')}
+            </div>`;
         }
 
         function renderCounterControlPanel() {
-            const activeCounter = state.counters.find(c => c.id === state.selectedCounterId);
-            const counterName = activeCounter ? activeCounter.name : "KAUNTER 1";
-
-            document.getElementById('selectedCounterBadge').textContent = activeCounter ? activeCounter.name.replace("KAUNTER ", "K") : "K1";
-            document.getElementById('selectedCounterTitle').textContent = counterName;
-
-            const activeId = state.activeTicketId;
-            const ticket = state.tickets.find(t => t.id === activeId);
-
-            const numDisplay = document.getElementById('currentNumDisplay');
-            const patientDisplay = document.getElementById('currentPatientName');
-            const catDisplay = document.getElementById('currentCategoryDisplay');
-            const rnDisplay = document.getElementById('currentRnDisplay');
-
-            const btnRecall = document.getElementById('btnRecall');
-            const btnComplete = document.getElementById('btnComplete');
-            const btnNoShow = document.getElementById('btnNoShow');
-
-            if (ticket && ticket.status === 'DISPENSING') {
-                numDisplay.textContent = ticket.number;
-                patientDisplay.textContent = `Pesakit: ${ticket.patientName}`;
-                
-                const catLabels = { "A": "Pesakit Am", "B": "Warga Emas/OKU", "C": "Fast Track" };
-                catDisplay.textContent = catLabels[ticket.category] || "Kategori";
-                rnDisplay.textContent = `RN: ${ticket.patientRn || '-'}`;
-
-                btnRecall.disabled = false;
-                btnComplete.disabled = false;
-                btnNoShow.disabled = false;
+            const counter = state.counters.find(c => c.id === state.selectedCounterId);
+            document.getElementById('selectedCounterBadge').textContent = counter ? counter.name.replace("KAUNTER ", "K") : "K1";
+            document.getElementById('selectedCounterTitle').textContent = counter ? counter.name : "KAUNTER 1";
+            const ticket = getActiveTicket(state.selectedCounterId);
+            const has = !!ticket;
+            if (has) {
+                const catLabels = { A: "Pesakit Am", B: "Warga Emas/OKU", C: "Fast Track" };
+                document.getElementById('currentNumDisplay').textContent = ticket.number;
+                document.getElementById('currentPatientName').textContent = `Pesakit: ${ticket.patientName}`;
+                document.getElementById('currentCategoryDisplay').textContent = catLabels[ticket.category] || "Kategori";
+                document.getElementById('currentRnDisplay').textContent = `RN: ${ticket.patientRn || '-'}`;
             } else {
-                numDisplay.textContent = "---";
-                patientDisplay.textContent = "Pesakit: -";
-                catDisplay.textContent = "Tiada Tiket Dipanggil";
-                rnDisplay.textContent = "RN: -";
-
-                btnRecall.disabled = true;
-                btnComplete.disabled = true;
-                btnNoShow.disabled = true;
+                document.getElementById('currentNumDisplay').textContent = "---";
+                document.getElementById('currentPatientName').textContent = "Pesakit: -";
+                document.getElementById('currentCategoryDisplay').textContent = "Tiada Tiket Dipanggil";
+                document.getElementById('currentRnDisplay').textContent = "RN: -";
             }
-
+            ['btnRecall', 'btnComplete', 'btnNoShow'].forEach(id => document.getElementById(id).disabled = !has);
+            renderActiveSpubBanner(ticket);
             updateActiveTicketTimers();
         }
 
         function renderWaitingQueueList() {
-            const listContainer = document.getElementById('waitingQueueList');
-            const waitingTickets = state.tickets.filter(t => t.status === 'WAITING');
-
-            document.getElementById('waitingCountBadge').textContent = `${waitingTickets.length} Tiket`;
-
-            if (waitingTickets.length === 0) {
-                listContainer.innerHTML = `
-                    <div class="text-center py-12 text-slate-400">
-                        <i class="fa-solid fa-circle-check text-4xl mb-2 text-sky-300"></i>
-                        <p class="text-xs font-semibold">Tiada tiket menunggu dalam giliran</p>
-                    </div>
-                `;
+            const box = document.getElementById('waitingQueueList');
+            const waiting = todayTickets().filter(t => t.status === 'WAITING').sort(byIssued);
+            document.getElementById('waitingCountBadge').textContent = `${waiting.length} Tiket`;
+            if (!waiting.length) {
+                box.innerHTML = `<div class="text-center py-12 text-slate-400"><i class="fa-solid fa-circle-check text-4xl mb-2 text-sky-300"></i><p class="text-xs font-semibold">Tiada tiket menunggu dalam giliran</p></div>`;
                 return;
             }
-
-            let html = '';
             const now = new Date();
-
-            waitingTickets.forEach((ticket) => {
-                const catColors = {
-                    "A": "bg-blue-100 text-blue-800",
-                    "B": "bg-amber-100 text-amber-800 font-extrabold",
-                    "C": "bg-purple-100 text-purple-800"
-                };
-
-                const elapsedMins = Math.floor((now - new Date(ticket.issuedAt)) / 60000);
-                let timerBadgeClass = "bg-emerald-100 text-emerald-800 border-emerald-200";
-                if (elapsedMins >= 15 && elapsedMins < 30) {
-                    timerBadgeClass = "bg-amber-100 text-amber-800 border-amber-200";
-                } else if (elapsedMins >= 30) {
-                    timerBadgeClass = "bg-rose-100 text-rose-800 border-rose-200 animate-pulse";
-                }
-
-                html += `
-                    <div class="p-3 bg-white/80 hover:bg-white rounded-2xl border border-sky-100 flex items-center justify-between transition shadow-sm">
-                        <div class="flex items-center gap-3">
-                            <span class="text-xs px-2.5 py-1 rounded-xl font-black ${catColors[ticket.category] || 'bg-slate-200'}">
-                                ${ticket.category}
-                            </span>
-                            <div>
-                                <div class="font-black font-mono text-base text-slate-800">${ticket.number}</div>
-                                <div class="text-xs font-bold text-slate-900 truncate max-w-[140px]">${ticket.patientName}</div>
-                                <div class="text-[10px] text-slate-400">RN: ${ticket.patientRn || '-'}</div>
-                            </div>
-                        </div>
-                        <div class="text-right">
-                            <div class="text-xs font-mono font-bold text-slate-600">${new Date(ticket.issuedAt).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</div>
-                            <span class="text-[10px] px-2 py-0.5 rounded-full border font-black ${timerBadgeClass}">
-                                ${elapsedMins} min
-                            </span>
+            const catColors = { A: "bg-blue-100 text-blue-800", B: "bg-amber-100 text-amber-800 font-extrabold", C: "bg-purple-100 text-purple-800" };
+            box.innerHTML = waiting.map(t => {
+                const mins = Math.floor((now - new Date(t.issuedAt)) / 60000);
+                let timerCls = "bg-emerald-100 text-emerald-800 border-emerald-200";
+                if (mins >= 30) timerCls = "bg-rose-100 text-rose-800 border-rose-200 animate-pulse";
+                else if (mins >= 15) timerCls = "bg-amber-100 text-amber-800 border-amber-200";
+                const hasSpub = matchSpubCases(state.spub, t.patientName, t.patientKey).length > 0;
+                return `<div class="p-3 bg-white/80 hover:bg-white rounded-2xl border border-sky-100 flex items-center justify-between transition shadow-sm">
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs px-2.5 py-1 rounded-xl font-black ${catColors[t.category] || 'bg-slate-200'}">${esc(t.category)}</span>
+                        <div>
+                            <div class="font-black font-mono text-base text-slate-800">${esc(t.number)}${hasSpub ? ' <span class="text-[10px] font-black px-1.5 py-0.5 rounded bg-amber-200 text-amber-900 align-middle">SPUB</span>' : ''}</div>
+                            <div class="text-xs font-bold text-slate-900 truncate max-w-[140px]">${esc(t.patientName)}</div>
+                            <div class="text-[10px] text-slate-400">RN: ${esc(t.patientRn || '-')}</div>
                         </div>
                     </div>
-                `;
-            });
-
-            listContainer.innerHTML = html;
-        }
-
-        function renderPublicTVDisplay() {
-            const activeId = state.activeTicketId;
-            const ticket = state.tickets.find(t => t.id === activeId);
-
-            const tvNum = document.getElementById('tvCallingNumber');
-            const tvName = document.getElementById('tvCallingName');
-            const tvCat = document.getElementById('tvCallingCat');
-            const tvCounter = document.getElementById('tvCallingCounter');
-
-            if (ticket && ticket.status === 'DISPENSING') {
-                tvNum.textContent = ticket.number;
-                
-                let displayName = ticket.patientName;
-                if (state.tvPrivacySensor) {
-                    displayName = maskPatientName(ticket.patientName);
-                }
-                tvName.textContent = displayName;
-
-                const catNames = { "A": "Pesakit Am", "B": "Warga Emas / OKU", "C": "Fast Track" };
-                tvCat.textContent = catNames[ticket.category] || "Kategori Preskripsi";
-                tvCounter.textContent = `SILA KE ${ticket.counterName || 'KAUNTER 1'}`;
-            } else {
-                tvNum.textContent = "---";
-                tvName.textContent = "TIADA PANGGILAN";
-                tvCat.textContent = "Sila Tunggu Panggilan";
-                tvCounter.textContent = "SILA KE KAUNTER -";
-            }
-
-            const recentContainer = document.getElementById('tvRecentCallsList');
-            const recentTickets = state.tickets
-                .filter(t => t.calledAt)
-                .sort((a, b) => new Date(b.calledAt) - new Date(a.calledAt))
-                .slice(0, 4);
-
-            if (recentTickets.length === 0) {
-                recentContainer.innerHTML = `<p class="text-xs text-slate-500 italic py-4 text-center">Tiada rekod panggilan lagi.</p>`;
-            } else {
-                let html = '';
-                recentTickets.forEach(t => {
-                    const timeStr = new Date(t.calledAt).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' });
-                    let name = t.patientName;
-                    if (state.tvPrivacySensor) name = maskPatientName(t.patientName);
-
-                    html += `
-                        <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
-                            <div>
-                                <div class="font-mono font-black text-lg text-sky-300">${t.number}</div>
-                                <div class="text-xs font-bold text-slate-300 truncate max-w-[140px]">${name}</div>
-                            </div>
-                            <div class="text-right">
-                                <span class="text-[10px] font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">${t.counterName || 'KAUNTER'}</span>
-                                <div class="text-[10px] font-mono text-slate-400 mt-0.5">${timeStr}</div>
-                            </div>
-                        </div>
-                    `;
-                });
-                recentContainer.innerHTML = html;
-            }
-
-            const completedTickets = state.tickets.filter(t => t.status === 'COMPLETED' && t.calledAt && t.issuedAt);
-            let totalWaitMs = 0;
-            completedTickets.forEach(t => {
-                totalWaitMs += (new Date(t.calledAt) - new Date(t.issuedAt));
-            });
-            const avgMins = completedTickets.length > 0 ? (totalWaitMs / completedTickets.length / 60000).toFixed(1) : 0;
-            document.getElementById('tvAvgWaitTime').textContent = `${avgMins} min`;
+                    <div class="text-right">
+                        <div class="text-xs font-mono font-bold text-slate-600">${new Date(t.issuedAt).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</div>
+                        <span class="text-[10px] px-2 py-0.5 rounded-full border font-black ${timerCls}">${mins} min</span>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         function maskPatientName(name) {
             if (!name) return "";
-            const parts = name.split(' ');
-            return parts.map(p => {
-                if (p.length <= 2) return p;
-                return p[0] + '*'.repeat(p.length - 2) + p[p.length - 1];
-            }).join(' ');
+            return name.split(' ').map(p => p.length <= 2 ? p : p[0] + '*'.repeat(p.length - 2) + p[p.length - 1]).join(' ');
         }
 
         function toggleTvPrivacy() {
             state.tvPrivacySensor = !state.tvPrivacySensor;
-            saveStateToStorage();
-            
-            const btnText = document.getElementById('tvPrivacyText');
-            const btnIcon = document.getElementById('tvPrivacyIcon');
-
-            if (state.tvPrivacySensor) {
-                btnText.textContent = "Sensored Name: ON";
-                btnIcon.className = "fa-solid fa-eye-slash";
-            } else {
-                btnText.textContent = "Sensored Name: OFF";
-                btnIcon.className = "fa-solid fa-eye";
-            }
-
+            saveLocal();
+            document.getElementById('tvPrivacyText').textContent = state.tvPrivacySensor ? "Sensored Name: ON" : "Sensored Name: OFF";
+            document.getElementById('tvPrivacyIcon').className = state.tvPrivacySensor ? "fa-solid fa-eye-slash" : "fa-solid fa-eye";
             renderPublicTVDisplay();
         }
 
-        function toggleFullscreenTV() {
-            const container = document.getElementById('fullscreenDisplayContainer');
-            if (!document.fullscreenElement) {
-                container.requestFullscreen().catch(err => alert(`Ralat Skrin Penuh: ${err.message}`));
+        function renderPublicTVDisplay() {
+            const ticket = latestCalledTicket();
+            const nm = n => state.tvPrivacySensor ? maskPatientName(n) : n;
+            if (ticket) {
+                const catNames = { A: "Pesakit Am", B: "Warga Emas / OKU", C: "Fast Track" };
+                document.getElementById('tvCallingNumber').textContent = ticket.number;
+                document.getElementById('tvCallingName').textContent = nm(ticket.patientName);
+                document.getElementById('tvCallingCat').textContent = catNames[ticket.category] || "Kategori Preskripsi";
+                document.getElementById('tvCallingCounter').textContent = `SILA KE ${ticket.counterName || 'KAUNTER 1'}`;
             } else {
-                document.exitFullscreen();
+                document.getElementById('tvCallingNumber').textContent = "---";
+                document.getElementById('tvCallingName').textContent = "TIADA PANGGILAN";
+                document.getElementById('tvCallingCat').textContent = "Sila Tunggu Panggilan";
+                document.getElementById('tvCallingCounter').textContent = "SILA KE KAUNTER -";
             }
+            const recent = todayTickets().filter(t => t.calledAt).sort((a, b) => new Date(b.calledAt) - new Date(a.calledAt)).slice(0, 4);
+            const rc = document.getElementById('tvRecentCallsList');
+            rc.innerHTML = recent.length ? recent.map(t => `
+                <div class="p-3 bg-slate-950/60 rounded-xl border border-slate-800 flex items-center justify-between">
+                    <div>
+                        <div class="font-mono font-black text-lg text-sky-300">${esc(t.number)}</div>
+                        <div class="text-xs font-bold text-slate-300 truncate max-w-[140px]">${esc(nm(t.patientName))}</div>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-[10px] font-bold text-emerald-400 bg-emerald-950 px-2 py-0.5 rounded border border-emerald-800">${esc(t.counterName || 'KAUNTER')}</span>
+                        <div class="text-[10px] font-mono text-slate-400 mt-0.5">${new Date(t.calledAt).toLocaleTimeString('ms-MY', { hour: '2-digit', minute: '2-digit' })}</div>
+                    </div>
+                </div>`).join('') : `<p class="text-xs text-slate-500 italic py-4 text-center">Tiada rekod panggilan lagi.</p>`;
+            document.getElementById('tvAvgWaitTime').textContent = `${avgWaitMinutes(todayTickets()).toFixed(1)} min`;
+        }
+
+        function toggleFullscreenTV() {
+            const c = document.getElementById('fullscreenDisplayContainer');
+            if (!document.fullscreenElement) c.requestFullscreen().catch(err => alert(`Ralat Skrin Penuh: ${err.message}`));
+            else document.exitFullscreen();
         }
 
         function renderSettingsCounterList() {
-            const container = document.getElementById('settingsCounterList');
-            if (!container) return;
-
-            if (state.counters.length === 0) {
-                container.innerHTML = `<p class="text-xs text-slate-400 italic">Tiada kaunter didaftarkan.</p>`;
-                return;
-            }
-
-            let html = '';
-            state.counters.forEach(c => {
-                const activeBadge = c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600';
-                html += `
-                    <div class="p-3 bg-white/80 rounded-2xl border border-sky-100 flex items-center justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="font-black text-xs text-slate-800">${c.name}</span>
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${activeBadge}">${c.active ? 'Aktif' : 'Nyahaktif'}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <button onclick="toggleCounterActive('${c.id}')" class="text-xs text-sky-700 font-bold hover:underline">
-                                ${c.active ? 'Nyahaktif' : 'Aktifkan'}
-                            </button>
-                            <button onclick="deleteCounter('${c.id}')" class="text-xs text-rose-600 hover:text-rose-800">
-                                <i class="fa-solid fa-trash"></i>
-                            </button>
-                        </div>
+            const box = document.getElementById('settingsCounterList');
+            if (!box) return;
+            if (!state.counters.length) { box.innerHTML = `<p class="text-xs text-slate-400 italic">Tiada kaunter didaftarkan.</p>`; return; }
+            box.innerHTML = state.counters.map(c => `
+                <div class="p-3 bg-white/80 rounded-2xl border border-sky-100 flex items-center justify-between">
+                    <div class="flex items-center gap-3">
+                        <span class="font-black text-xs text-slate-800">${esc(c.name)}</span>
+                        <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${c.active ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-200 text-slate-600'}">${c.active ? 'Aktif' : 'Nyahaktif'}</span>
                     </div>
-                `;
-            });
-            container.innerHTML = html;
+                    <div class="flex items-center gap-2">
+                        <button data-id="${esc(c.id)}" onclick="toggleCounterActive(this.dataset.id)" class="text-xs text-sky-700 font-bold hover:underline">${c.active ? 'Nyahaktif' : 'Aktifkan'}</button>
+                        <button data-id="${esc(c.id)}" onclick="deleteCounter(this.dataset.id)" class="text-xs text-rose-600 hover:text-rose-800"><i class="fa-solid fa-trash"></i></button>
+                    </div>
+                </div>`).join('');
         }
 
-        function renderLogTable() {
-            filterLogTable();
+        // ==== REPORTS ====
+        function ensureReportDefaults(force) {
+            const f = document.getElementById('rptFrom'), t = document.getElementById('rptTo');
+            if (!f || !t) return;
+            if (force || !f.value) f.value = todayKey();
+            if (force || !t.value) t.value = todayKey();
         }
+        function onReportRangeChange() { updateCharts(); renderLogTable(); }
+        function renderLogTable() { filterLogTable(); }
 
         function filterLogTable() {
             const query = document.getElementById('logSearchInput').value.toLowerCase();
             const statusFilter = document.getElementById('logStatusFilter').value;
             const tbody = document.getElementById('logTableBody');
+            const filtered = reportTickets().filter(t => {
+                const okSearch = String(t.number).toLowerCase().includes(query) ||
+                    (t.patientName && t.patientName.toLowerCase().includes(query)) ||
+                    (t.patientRn && t.patientRn.toLowerCase().includes(query));
+                return okSearch && (statusFilter === 'ALL' || t.status === statusFilter);
+            }).sort((a, b) => new Date(b.issuedAt) - new Date(a.issuedAt));
 
-            let filtered = state.tickets.filter(t => {
-                const matchesSearch = t.number.toLowerCase().includes(query) || 
-                                      (t.patientName && t.patientName.toLowerCase().includes(query)) ||
-                                      (t.patientRn && t.patientRn.toLowerCase().includes(query));
-                const matchesStatus = (statusFilter === 'ALL') || (t.status === statusFilter);
-                return matchesSearch && matchesStatus;
-            });
+            if (!filtered.length) { tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-sans text-xs">Tiada rekod data dijumpai.</td></tr>`; return; }
+            const badges = {
+                WAITING: '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800">Menunggu</span>',
+                DISPENSING: '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-100 text-blue-800">Dipanggil</span>',
+                COMPLETED: '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800">Selesai</span>',
+                NO_SHOW: '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-100 text-rose-800">Tidak Hadir</span>'
+            };
+            tbody.innerHTML = filtered.map(t => {
+                const wait = (t.calledAt && t.issuedAt) ? ((new Date(t.calledAt) - new Date(t.issuedAt)) / 60000).toFixed(1) + ' min' : '-';
+                return `<tr class="hover:bg-sky-50/50 transition">
+                    <td class="p-3 font-bold text-slate-900">${esc(t.number)}</td>
+                    <td class="p-3 font-bold text-sky-950">${esc(t.patientName || '-')}</td>
+                    <td class="p-3 font-semibold text-slate-700">${esc(t.counterName || '-')}</td>
+                    <td class="p-3">Kat ${esc(t.category)}</td>
+                    <td class="p-3">${new Date(t.issuedAt).toLocaleTimeString('ms-MY')}</td>
+                    <td class="p-3">${t.calledAt ? new Date(t.calledAt).toLocaleTimeString('ms-MY') : '-'}</td>
+                    <td class="p-3">${t.completedAt ? new Date(t.completedAt).toLocaleTimeString('ms-MY') : '-'}</td>
+                    <td class="p-3 font-bold text-sky-700">${wait}</td>
+                    <td class="p-3">${badges[t.status] || esc(t.status)}</td>
+                </tr>`;
+            }).join('');
+        }
 
-            filtered.sort((a, b) => new Date(b.issuedAt) - new Date(a.issuedAt));
-
-            if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" class="p-6 text-center text-slate-400 font-sans text-xs">Tiada rekod data dijumpai.</td></tr>`;
-                return;
-            }
-
-            let html = '';
-            filtered.forEach(t => {
-                const issueTime = new Date(t.issuedAt).toLocaleTimeString('ms-MY');
-                const callTime = t.calledAt ? new Date(t.calledAt).toLocaleTimeString('ms-MY') : '-';
-                const completeTime = t.completedAt ? new Date(t.completedAt).toLocaleTimeString('ms-MY') : '-';
-
-                let waitMins = '-';
-                if (t.calledAt && t.issuedAt) {
-                    waitMins = ((new Date(t.calledAt) - new Date(t.issuedAt)) / 60000).toFixed(1) + ' min';
-                }
-
-                const statusBadges = {
-                    'WAITING': '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-amber-100 text-amber-800">Menunggu</span>',
-                    'DISPENSING': '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-blue-100 text-blue-800">Dipanggil</span>',
-                    'COMPLETED': '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-emerald-100 text-emerald-800">Selesai</span>',
-                    'NO_SHOW': '<span class="px-2 py-0.5 text-[10px] font-bold rounded bg-rose-100 text-rose-800">Tidak Hadir</span>'
-                };
-
-                html += `
-                    <tr class="hover:bg-sky-50/50 transition">
-                        <td class="p-3 font-bold text-slate-900">${t.number}</td>
-                        <td class="p-3 font-bold text-sky-950">${t.patientName || '-'}</td>
-                        <td class="p-3 font-semibold text-slate-700">${t.counterName || '-'}</td>
-                        <td class="p-3">Kat ${t.category}</td>
-                        <td class="p-3">${issueTime}</td>
-                        <td class="p-3">${callTime}</td>
-                        <td class="p-3">${completeTime}</td>
-                        <td class="p-3 font-bold text-sky-700">${waitMins}</td>
-                        <td class="p-3">${statusBadges[t.status] || t.status}</td>
-                    </tr>
-                `;
-            });
-
-            tbody.innerHTML = html;
+        function csvCell(v) {
+            let s = String(v == null ? '' : v);
+            if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;   // elak formula Excel
+            return `"${s.replace(/"/g, '""')}"`;
         }
 
         function exportTableToCSV() {
-            if (state.tickets.length === 0) {
-                alert("Tiada data untuk dieksport.");
-                return;
-            }
-
-            let csvContent = "data:text/csv;charset=utf-8,";
-            csvContent += "ID,Nombor Tiket,Nama Pesakit,No RN,Kaunter,Kategori,Status,Masa Ambil,Masa Dipanggil,Masa Selesai,Masa Menunggu (Min)\n";
-
-            state.tickets.forEach(t => {
-                const issueTime = new Date(t.issuedAt).toLocaleString('ms-MY');
-                const callTime = t.calledAt ? new Date(t.calledAt).toLocaleString('ms-MY') : '';
-                const completeTime = t.completedAt ? new Date(t.completedAt).toLocaleString('ms-MY') : '';
-
-                let waitMins = '';
-                if (t.calledAt && t.issuedAt) {
-                    waitMins = ((new Date(t.calledAt) - new Date(t.issuedAt)) / 60000).toFixed(2);
-                }
-
-                const row = [
-                    `"${t.id}"`,
-                    `"${t.number}"`,
-                    `"${(t.patientName || '').replace(/"/g, '""')}"`,
-                    `"${(t.patientRn || '').replace(/"/g, '""')}"`,
-                    `"${(t.counterName || '').replace(/"/g, '""')}"`,
-                    `"${t.category}"`,
-                    `"${t.status}"`,
-                    `"${issueTime}"`,
-                    `"${callTime}"`,
-                    `"${completeTime}"`,
-                    `"${waitMins}"`
-                ].join(",");
-
-                csvContent += row + "\n";
+            const list = reportTickets();
+            if (!list.length) { alert("Tiada data untuk dieksport."); return; }
+            let csv = "ID,Tarikh,Nombor Tiket,Nama Pesakit,No RN,Kaunter,Kategori,Status,Masa Ambil,Masa Dipanggil,Masa Selesai,Masa Menunggu (Min)\n";
+            list.slice().sort(byIssued).forEach(t => {
+                const wait = (t.calledAt && t.issuedAt) ? ((new Date(t.calledAt) - new Date(t.issuedAt)) / 60000).toFixed(2) : '';
+                csv += [t.id, t.dayKey, t.number, t.patientName, t.patientRn, t.counterName, t.category, t.status,
+                    new Date(t.issuedAt).toLocaleString('ms-MY'),
+                    t.calledAt ? new Date(t.calledAt).toLocaleString('ms-MY') : '',
+                    t.completedAt ? new Date(t.completedAt).toLocaleString('ms-MY') : '', wait].map(csvCell).join(",") + "\n";
             });
-
-            const encodedUri = encodeURI(csvContent);
+            const blob = new Blob(["﻿" + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Laporan_QMS_KKPB_${new Date().toISOString().slice(0,10)}.csv`);
+            link.href = URL.createObjectURL(blob);
+            link.download = `Laporan_QMS_KKPB_${todayKey()}.csv`;
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
+            setTimeout(() => URL.revokeObjectURL(link.href), 1000);
         }
 
         function initCharts() {
-            const ctx1 = document.getElementById('peakHoursChart').getContext('2d');
-            peakChartInstance = new Chart(ctx1, {
+            peakChartInstance = new Chart(document.getElementById('peakHoursChart').getContext('2d'), {
                 type: 'bar',
                 data: {
                     labels: ['8 AM', '9 AM', '10 AM', '11 AM', '12 PM', '2 PM', '3 PM', '4 PM'],
-                    datasets: [{
-                        label: 'Bilangan Tiket',
-                        data: [0, 0, 0, 0, 0, 0, 0, 0],
-                        backgroundColor: '#38bdf8',
-                        borderRadius: 8
-                    }]
+                    datasets: [{ label: 'Bilangan Tiket', data: [0, 0, 0, 0, 0, 0, 0, 0], backgroundColor: '#38bdf8', borderRadius: 8 }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { display: false } },
-                    scales: { y: { beginAtZero: true } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
             });
-
-            const ctx2 = document.getElementById('categoryChart').getContext('2d');
-            categoryChartInstance = new Chart(ctx2, {
+            categoryChartInstance = new Chart(document.getElementById('categoryChart').getContext('2d'), {
                 type: 'doughnut',
                 data: {
                     labels: ['Kategori A (Am)', 'Kategori B (Warga Emas/OKU)', 'Kategori C (Fast Track)'],
-                    datasets: [{
-                        data: [0, 0, 0],
-                        backgroundColor: ['#0284c7', '#f59e0b', '#818cf8']
-                    }]
+                    datasets: [{ data: [0, 0, 0], backgroundColor: ['#0284c7', '#f59e0b', '#818cf8'] }]
                 },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: { legend: { position: 'bottom' } }
-                }
+                options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } }
             });
-
             updateCharts();
         }
 
         function updateCharts() {
             if (!peakChartInstance || !categoryChartInstance) return;
+            const list = reportTickets();
+            const completed = list.filter(t => t.status === 'COMPLETED' && t.calledAt && t.issuedAt);
+            const within = completed.filter(t => (new Date(t.calledAt) - new Date(t.issuedAt)) / 60000 <= state.kpiTargetMinutes).length;
+            const pct = completed.length ? Math.round((within / completed.length) * 100) : 100;
+            document.getElementById('kpiPercentage').textContent = `${pct}%`;
+            document.getElementById('kpiCircle').textContent = `${pct}%`;
 
-            const completed = state.tickets.filter(t => t.status === 'COMPLETED' && t.calledAt && t.issuedAt);
-            let withinTarget = 0;
-
-            completed.forEach(t => {
-                const waitMins = (new Date(t.calledAt) - new Date(t.issuedAt)) / 60000;
-                if (waitMins <= state.kpiTargetMinutes) withinTarget++;
-            });
-
-            const percentage = completed.length > 0 ? Math.round((withinTarget / completed.length) * 100) : 100;
-            document.getElementById('kpiPercentage').textContent = `${percentage}%`;
-            document.getElementById('kpiCircle').textContent = `${percentage}%`;
-
-            const countA = state.tickets.filter(t => t.category === 'A').length;
-            const countB = state.tickets.filter(t => t.category === 'B').length;
-            const countC = state.tickets.filter(t => t.category === 'C').length;
-
-            categoryChartInstance.data.datasets[0].data = [countA, countB, countC];
+            categoryChartInstance.data.datasets[0].data = ['A', 'B', 'C'].map(k => list.filter(t => t.category === k).length);
             categoryChartInstance.update();
 
-            const hoursCount = [0, 0, 0, 0, 0, 0, 0, 0];
-            state.tickets.forEach(t => {
-                const hour = new Date(t.issuedAt).getHours();
-                if (hour === 8) hoursCount[0]++;
-                else if (hour === 9) hoursCount[1]++;
-                else if (hour === 10) hoursCount[2]++;
-                else if (hour === 11) hoursCount[3]++;
-                else if (hour === 12) hoursCount[4]++;
-                else if (hour === 14) hoursCount[5]++;
-                else if (hour === 15) hoursCount[6]++;
-                else if (hour >= 16) hoursCount[7]++;
+            const hours = [0, 0, 0, 0, 0, 0, 0, 0];
+            list.forEach(t => {
+                const h = new Date(t.issuedAt).getHours();
+                const idx = { 8: 0, 9: 1, 10: 2, 11: 3, 12: 4, 14: 5, 15: 6 }[h];
+                if (idx !== undefined) hours[idx]++; else if (h >= 16) hours[7]++;
             });
-
-            peakChartInstance.data.datasets[0].data = hoursCount;
+            peakChartInstance.data.datasets[0].data = hours;
             peakChartInstance.update();
         }
 
+        // ==== MAINTENANCE ====
         function generateSampleData() {
+            if (!confirm("Data demo akan DITAMBAH ke rekod hari ini (dan disimpan ke cloud jika Firebase aktif). Teruskan?")) return;
             const now = new Date();
-            const sampleTickets = [];
             const names = ['AHMAD BIN RAZAK', 'SITI FATIMAH BINTI ISMAIL', 'M. MUTHUSAMY', 'TAN WEI MING', 'KHADIJAH BINTI HASSAN'];
-
             for (let i = 1; i <= 10; i++) {
                 const cat = i % 3 === 0 ? 'B' : (i % 2 === 0 ? 'C' : 'A');
-                let prefix = cat === 'A' ? 'A1' : (cat === 'B' ? 'B2' : 'C3');
-                let seq = String(100 + i);
-
-                const minsAgo = Math.floor(Math.random() * 35) + 5;
-                const issuedDate = new Date(now.getTime() - minsAgo * 60000);
-
-                let status = i > 8 ? 'WAITING' : 'COMPLETED';
-                let calledDate = status === 'COMPLETED' ? new Date(issuedDate.getTime() + 12 * 60000) : null;
-                let completedDate = status === 'COMPLETED' ? new Date(calledDate.getTime() + 4 * 60000) : null;
-
-                sampleTickets.push({
-                    id: 'T_SAMPLE_' + i,
-                    number: `${prefix}${seq}`,
-                    category: cat,
-                    patientName: names[i % names.length],
-                    patientRn: `RN${10000 + i}`,
-                    status: status,
-                    issuedAt: issuedDate.toISOString(),
-                    calledAt: calledDate ? calledDate.toISOString() : null,
-                    completedAt: completedDate ? completedDate.toISOString() : null,
-                    counterId: "1",
-                    counterName: "KAUNTER 1"
-                });
+                const prefix = cat === 'A' ? 'A1' : (cat === 'B' ? 'B2' : 'C3');
+                const issued = new Date(now.getTime() - (Math.floor(Math.random() * 35) + 5) * 60000);
+                const status = i > 8 ? 'WAITING' : 'COMPLETED';
+                const called = status === 'COMPLETED' ? new Date(issued.getTime() + 12 * 60000) : null;
+                const completedAt = called ? new Date(called.getTime() + 4 * 60000) : null;
+                const t = {
+                    id: 'T_SAMPLE_' + Date.now() + '_' + i,
+                    number: `D${prefix}${100 + i}`,
+                    category: cat, patientName: names[i % names.length], patientRn: `RN${10000 + i}`, patientKey: '',
+                    status, dayKey: todayKey(), issuedAt: issued.toISOString(),
+                    calledAt: called ? called.toISOString() : null,
+                    completedAt: completedAt ? completedAt.toISOString() : null,
+                    counterId: status === 'COMPLETED' ? "1" : null, counterName: status === 'COMPLETED' ? "KAUNTER 1" : null
+                };
+                state.tickets.push(t);
+                persistTicket(t);
             }
-
-            state.tickets = sampleTickets;
-            saveStateToStorage();
             renderAllViews();
-            alert("Data contoh demo berjaya dijana!");
+            alert("Data contoh demo berjaya dijana! (nombor bermula dengan D)");
         }
 
-        function confirmResetData() {
-            if (confirm("AMARAN: Adakah anda pasti mahu memadam semua data rekod tiket hari ini?")) {
-                state.tickets = [];
-                state.activeTicketId = null;
-                saveStateToStorage();
-                renderAllViews();
-                alert("Data berjaya direset.");
+        async function confirmResetData() {
+            if (!confirm("AMARAN: Padam semua rekod tiket HARI INI sahaja? Rekod hari lain dan kes SPUB tidak terjejas.")) return;
+            const ids = todayTickets().map(t => t.id);
+            state.tickets = state.tickets.filter(t => t.dayKey !== todayKey());
+            saveLocal();
+            if (fbReady()) {
+                try {
+                    const { doc, writeBatch } = window.FirebaseModule;
+                    for (let i = 0; i < ids.length; i += 400) {
+                        const batch = writeBatch(firebaseDb);
+                        ids.slice(i, i + 400).forEach(id => batch.delete(doc(firebaseDb, COL_TICKETS, id)));
+                        if (i === 0) batch.delete(doc(firebaseDb, COL_COUNTERS, todayKey()));
+                        await batch.commit();
+                    }
+                    if (!ids.length) await writeBatch(firebaseDb).delete(doc(firebaseDb, COL_COUNTERS, todayKey())).commit();
+                } catch (e) { alert("Padam di cloud gagal: " + e.message); }
             }
+            renderAllViews();
+            alert("Rekod hari ini berjaya direset.");
+        }
+
+        // =====================================================================
+        // ==== SPUB MODULE ====
+        // =====================================================================
+        const MY_STATES = ['Johor', 'Kedah', 'Kelantan', 'Melaka', 'Negeri Sembilan', 'Pahang', 'Perak', 'Perlis', 'Pulau Pinang', 'Sabah', 'Sarawak', 'Selangor', 'Terengganu', 'WP Kuala Lumpur', 'WP Labuan', 'WP Putrajaya'];
+        const CLOSE_OUTCOMES = {
+            DATANG: 'Pesakit datang & ambil ubat',
+            TIDAK_DATANG: 'Pesakit tidak datang',
+            SPUB_BARU: 'SPUB baharu dikeluarkan',
+            LAIN: 'Lain-lain'
+        };
+
+        function buildSpubStaticUI() {
+            document.getElementById('spubState').innerHTML = MY_STATES.map(s => `<option value="${s}">${s}</option>`).join('');
+            document.getElementById('spubState').value = 'Pahang';
+            const detail = document.getElementById('spubDetailBody');
+            detail.addEventListener('change', onSpubDetailChange);
+            document.getElementById('spubCaseList').addEventListener('click', e => {
+                const el = e.target.closest('[data-spub-open]');
+                if (el) openSpubDetail(el.dataset.spubOpen);
+            });
+            document.getElementById('spubDashList').addEventListener('click', e => {
+                const el = e.target.closest('[data-spub-open]');
+                if (el) { switchTab('spub'); openSpubDetail(el.dataset.spubOpen); }
+            });
+        }
+
+        function rowDotClass(status) {
+            return { BELUM: 'bg-rose-400', DIBUAT: 'bg-sky-400', TERIMA: 'bg-emerald-500', ALT: 'bg-indigo-400', TIADA: 'bg-slate-300' }[status] || 'bg-slate-300';
+        }
+        function rowBadgeClass(status) {
+            return { BELUM: 'bg-rose-100 text-rose-800', DIBUAT: 'bg-sky-100 text-sky-800', TERIMA: 'bg-emerald-100 text-emerald-800', ALT: 'bg-indigo-100 text-indigo-800', TIADA: 'bg-slate-100 text-slate-600' }[status] || 'bg-slate-100 text-slate-600';
+        }
+        function alertChip(a) {
+            const cls = a.level === 'merah' ? 'bg-rose-100 text-rose-800 border-rose-200' : 'bg-amber-100 text-amber-800 border-amber-200';
+            return `<span class="inline-block text-[10px] font-bold px-2 py-0.5 rounded-full border ${cls}">${esc(a.text)}</span>`;
+        }
+
+        function renderSpubViews() {
+            const alerts = computeSpubAlerts(state.spub, todayKey());
+            const red = alerts.filter(a => a.level === 'merah').length;
+
+            // lencana tab
+            const badge = document.getElementById('spubTabBadge');
+            if (badge) {
+                badge.textContent = alerts.length;
+                badge.className = "text-[10px] font-black px-1.5 py-0.5 rounded-full " + (alerts.length ? (red ? "bg-rose-500 text-white" : "bg-amber-400 text-amber-950") : "hidden");
+            }
+
+            // kad papan pemuka
+            const dashList = document.getElementById('spubDashList');
+            const dashSummary = document.getElementById('spubDashSummary');
+            if (dashList) {
+                const active = state.spub.filter(c => c.status === 'AKTIF').length;
+                dashSummary.textContent = alerts.length
+                    ? `${alerts.length} tindakan perlu diambil (${red} lewat) daripada ${active} kes aktif`
+                    : `Tiada tindakan tertunggak. ${active} kes aktif.`;
+                dashList.innerHTML = alerts.slice(0, 5).map(a => `
+                    <button data-spub-open="${esc(a.caseId)}" class="w-full text-left flex items-center gap-2 p-2 rounded-xl border ${a.level === 'merah' ? 'border-rose-200 bg-rose-50' : 'border-amber-200 bg-amber-50'} hover:brightness-95 transition">
+                        <i class="fa-solid ${a.level === 'merah' ? 'fa-circle-exclamation text-rose-600' : 'fa-clock text-amber-600'}"></i>
+                        <span class="text-xs"><span class="font-black text-slate-900">${esc(a.name)}</span> <span class="text-slate-600">· ${esc(a.text)}</span></span>
+                    </button>`).join('') + (alerts.length > 5 ? `<p class="text-[11px] text-slate-500 px-1">+${alerts.length - 5} lagi di tab SPUB</p>` : '');
+            }
+
+            // senarai kes
+            const list = document.getElementById('spubCaseList');
+            if (list) {
+                const q = spubFilter.q.toLowerCase();
+                const cases = state.spub.filter(c => {
+                    if (spubFilter.dir !== 'ALL' && c.direction !== spubFilter.dir) return false;
+                    if (spubFilter.status !== 'ALL' && c.status !== spubFilter.status) return false;
+                    if (!q) return true;
+                    return [c.patientName, c.mrn, c.icLast4, c.ptj, c.r1No].some(v => String(v || '').toLowerCase().includes(q));
+                });
+                const worst = id => { const a = alerts.filter(x => x.caseId === id); return a.some(x => x.level === 'merah') ? 0 : a.length ? 1 : 2; };
+                cases.sort((a, b) => worst(a.id) - worst(b.id) || String(a.appointmentDate).localeCompare(String(b.appointmentDate)));
+                document.getElementById('spubCountBadge').textContent = `${cases.length} kes`;
+                list.innerHTML = cases.length ? cases.map(c => spubCaseCardHtml(c, alerts)).join('') : `
+                    <div class="lg:col-span-2 glass-card rounded-3xl p-10 text-center text-slate-500">
+                        <i class="fa-solid fa-box-open text-4xl text-sky-300 mb-3"></i>
+                        <p class="text-sm font-bold text-slate-700">Tiada kes SPUB dijumpai</p>
+                        <p class="text-xs mt-1">Tekan "Kes SPUB Baru" apabila menerima SPUB R1 atau merujuk pesakit keluar.</p>
+                    </div>`;
+            }
+            renderSpubDetail();
+        }
+
+        function spubCaseCardHtml(c, alerts) {
+            const today = todayKey();
+            const mine = alerts.filter(a => a.caseId === c.id);
+            const rows = c.schedule || [];
+            const dots = rows.map(r => `<span title="Bulan ${r.no}: ${esc(labelFor(c.direction, r.status))}" class="w-3.5 h-3.5 rounded-full inline-block ${rowDotClass(r.status)}"></span>`).join('');
+            const d = c.appointmentDate ? diffDays(today, c.appointmentDate) : null;
+            const apptText = d === null ? '-' : (d >= 0 ? `${fmtDate(c.appointmentDate)} (${d} hari lagi)` : `${fmtDate(c.appointmentDate)} (lepas ${-d} hari)`);
+            const drugs = (c.drugs || []).map(x => x.name).filter(Boolean);
+            const drugText = drugs.slice(0, 2).join(', ') + (drugs.length > 2 ? ` +${drugs.length - 2}` : '');
+            const dirBadge = c.direction === 'OUT'
+                ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-md bg-violet-100 text-violet-800">SPUB Out</span>'
+                : '<span class="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">SPUB In</span>';
+            const closed = c.status === 'SELESAI' ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-200 text-slate-700">Selesai</span>' : '';
+            return `<div data-spub-open="${esc(c.id)}" class="glass-card rounded-3xl p-5 cursor-pointer hover:shadow-xl transition space-y-3">
+                <div class="flex items-start justify-between gap-2">
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">${dirBadge}${closed}</div>
+                        <div class="font-black text-slate-900 text-base mt-1">${esc(c.patientName)}</div>
+                        <div class="text-[11px] text-slate-500">${c.mrn ? 'MRN ' + esc(c.mrn) : ''}${c.mrn && c.icLast4 ? ' · ' : ''}${c.icLast4 ? 'IC ****' + esc(c.icLast4) : ''}</div>
+                    </div>
+                    <div class="text-right text-[11px] text-slate-500">
+                        <div class="font-bold text-slate-700">${esc(c.ptj || '-')}</div>
+                        <div>${esc(c.ptjState || '')}${c.r1No ? ' · ' + esc(c.r1No) : ''}</div>
+                    </div>
+                </div>
+                <div class="text-xs text-slate-600"><i class="fa-solid fa-pills text-sky-500"></i> ${esc(drugText || '-')}</div>
+                <div class="text-xs text-slate-600"><i class="fa-solid fa-calendar-check text-indigo-500"></i> Temujanji: <span class="font-bold">${apptText}</span></div>
+                <div class="flex items-center gap-1.5">${dots}</div>
+                ${mine.length ? `<div class="flex flex-wrap gap-1.5">${mine.slice(0, 3).map(alertChip).join('')}</div>` : ''}
+            </div>`;
+        }
+
+        function setSpubFilter() {
+            spubFilter.dir = document.getElementById('spubDirFilter').value;
+            spubFilter.status = document.getElementById('spubStatusFilter').value;
+            spubFilter.q = document.getElementById('spubSearch').value.trim();
+            renderSpubViews();
+        }
+
+        // ---- Padanan semasa daftar tiket ----
+        function updateSpubLookup() {
+            const box = document.getElementById('spubLookupBox');
+            if (!box) return;
+            const name = document.getElementById('patientNameInput').value;
+            const key = document.getElementById('patientKeyInput').value;
+            const hits = (normName(name).length >= 3 || key.trim()) ? matchSpubCases(state.spub, name, key) : [];
+            if (!hits.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+            box.classList.remove('hidden');
+            box.innerHTML = `<div class="font-black text-amber-900"><i class="fa-solid fa-box-archive"></i> Kes SPUB aktif dijumpai</div>` +
+                hits.slice(0, 3).map(c => `<div class="mt-1 text-amber-900"><span class="font-bold">${esc(c.patientName)}</span>: ${esc(spubSummaryLine(c, todayKey()))}</div>`).join('');
+        }
+
+        // ---- Borang kes ----
+        function setSpubFormLabels() {
+            const dir = (document.querySelector('input[name="spubDirection"]:checked') || {}).value || 'IN';
+            document.getElementById('spubLblPtj').textContent = dir === 'OUT' ? 'Dirujuk ke (PTj)' : 'PTj yang membekal / merujuk';
+            document.getElementById('spubLblReceived').textContent = dir === 'OUT' ? 'Tarikh bekalan awal dihantar' : 'Tarikh terima ubat (stok awal)';
+        }
+
+        function addSpubDrugRow(d) {
+            const wrap = document.getElementById('spubDrugRows');
+            const row = document.createElement('div');
+            row.className = 'grid grid-cols-12 gap-2 items-center spub-drug-row';
+            row.innerHTML = `
+                <input type="text" class="col-span-6 bg-white border border-sky-200 rounded-xl px-3 py-2 text-xs font-semibold outline-none focus:ring-2 focus:ring-sky-500" placeholder="Nama ubat" aria-label="Nama ubat" data-f="name">
+                <input type="text" class="col-span-3 bg-white border border-sky-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-sky-500" placeholder="Baki qty" aria-label="Baki kuantiti" data-f="balanceQty">
+                <input type="text" class="col-span-2 bg-white border border-sky-200 rounded-xl px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-sky-500" placeholder="Catatan" aria-label="Catatan ubat" data-f="note">
+                <button type="button" class="col-span-1 text-rose-600 hover:text-rose-800" title="Buang ubat" aria-label="Buang ubat"><i class="fa-solid fa-xmark"></i></button>`;
+            row.querySelector('[data-f="name"]').value = (d && d.name) || '';
+            row.querySelector('[data-f="balanceQty"]').value = (d && d.balanceQty) || '';
+            row.querySelector('[data-f="note"]').value = (d && d.note) || '';
+            row.querySelector('button').addEventListener('click', () => { if (wrap.children.length > 1) row.remove(); });
+            wrap.appendChild(row);
+        }
+
+        function openSpubForm(id) {
+            const c = id ? state.spub.find(x => x.id === id) : null;
+            document.getElementById('spubFormTitle').textContent = c ? 'Sunting Kes SPUB' : 'Kes SPUB Baru';
+            document.getElementById('spubFormId').value = c ? c.id : '';
+            document.querySelectorAll('input[name="spubDirection"]').forEach(r => r.checked = r.value === (c ? c.direction : 'IN'));
+            document.getElementById('spubName').value = c ? c.patientName : '';
+            document.getElementById('spubMrn').value = c ? (c.mrn || '') : '';
+            document.getElementById('spubIc4').value = c ? (c.icLast4 || '') : '';
+            document.getElementById('spubPtj').value = c ? c.ptj : '';
+            document.getElementById('spubState').value = c ? (c.ptjState || 'Pahang') : 'Pahang';
+            document.getElementById('spubR1').value = c ? (c.r1No || '') : '';
+            document.getElementById('spubContact').value = c ? (c.contact || '') : '';
+            document.getElementById('spubReceived').value = c ? c.receivedDate : todayKey();
+            document.getElementById('spubAppt').value = c ? c.appointmentDate : '';
+            document.getElementById('spubLead').value = c && Number.isFinite(c.leadDays) ? c.leadDays : 14;
+            document.getElementById('spubRemarks').value = c ? (c.remarks || '') : '';
+            document.getElementById('spubDrugRows').innerHTML = '';
+            ((c && c.drugs && c.drugs.length) ? c.drugs : [{}]).forEach(addSpubDrugRow);
+            document.getElementById('spubPtjList').innerHTML = [...new Set(state.spub.map(x => x.ptj).filter(Boolean))].map(p => `<option value="${esc(p)}">`).join('');
+            setSpubFormLabels();
+            document.getElementById('spubFormModal').classList.remove('hidden');
+            document.getElementById('spubName').focus();
+        }
+        function closeSpubForm() { document.getElementById('spubFormModal').classList.add('hidden'); }
+
+        function saveSpubForm(event) {
+            event.preventDefault();
+            const id = document.getElementById('spubFormId').value;
+            const existing = id ? state.spub.find(x => x.id === id) : null;
+            const direction = document.querySelector('input[name="spubDirection"]:checked').value;
+            const patientName = normName(document.getElementById('spubName').value);
+            const receivedDate = document.getElementById('spubReceived').value;
+            const appointmentDate = document.getElementById('spubAppt').value;
+            const ic4 = document.getElementById('spubIc4').value.replace(/\D/g, '').slice(-4);
+            const drugs = [...document.querySelectorAll('.spub-drug-row')].map(r => ({
+                name: r.querySelector('[data-f="name"]').value.trim(),
+                balanceQty: r.querySelector('[data-f="balanceQty"]').value.trim(),
+                note: r.querySelector('[data-f="note"]').value.trim()
+            })).filter(d => d.name);
+
+            if (!patientName || !receivedDate || !appointmentDate) { alert("Nama, tarikh terima/hantar dan tarikh temujanji wajib diisi."); return; }
+            if (!drugs.length) { alert("Sila masukkan sekurang-kurangnya satu ubat."); return; }
+            if (appointmentDate <= receivedDate && !confirm("Tarikh temujanji tidak lewat daripada tarikh terima. Teruskan?")) return;
+            if (!existing && state.spub.some(c => c.status === 'AKTIF' && c.direction === direction && normName(c.patientName) === patientName)
+                && !confirm("Sudah ada kes aktif untuk pesakit ini. Tetap tambah kes baharu?")) return;
+
+            const lead = parseInt(document.getElementById('spubLead').value, 10);
+            const base = {
+                direction, patientName,
+                mrn: document.getElementById('spubMrn').value.trim().toUpperCase(),
+                icLast4: ic4,
+                ptj: document.getElementById('spubPtj').value.trim(),
+                ptjState: document.getElementById('spubState').value,
+                r1No: document.getElementById('spubR1').value.trim().toUpperCase(),
+                contact: document.getElementById('spubContact').value.trim(),
+                receivedDate, appointmentDate,
+                leadDays: Number.isFinite(lead) ? lead : 14,
+                drugs,
+                remarks: document.getElementById('spubRemarks').value.trim()
+            };
+            let c;
+            if (existing) {
+                const datesChanged = existing.receivedDate !== receivedDate || existing.appointmentDate !== appointmentDate || existing.direction !== direction;
+                c = Object.assign(existing, base);
+                if (datesChanged) c.schedule = mergeSchedule(generateSchedule(direction, receivedDate, appointmentDate), existing.schedule);
+            } else {
+                c = Object.assign({
+                    id: 'S_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+                    status: 'AKTIF', createdAt: iso(), closedAt: null, outcome: null, visitDate: null, closeNote: '',
+                    schedule: generateSchedule(direction, receivedDate, appointmentDate)
+                }, base);
+                state.spub.push(c);
+            }
+            persistSpub(c);
+            closeSpubForm();
+            renderSpubViews();
+            updateSpubLookup();
+            renderCounterControlPanel();
+            openSpubDetail(c.id);
+        }
+
+        // ---- Paparan kes ----
+        function openSpubDetail(id) {
+            openSpubId = id;
+            document.getElementById('spubDetailModal').classList.remove('hidden');
+            renderSpubDetail(true);
+        }
+        function closeSpubDetail() {
+            openSpubId = null;
+            document.getElementById('spubDetailModal').classList.add('hidden');
+        }
+
+        function renderSpubDetail(force) {
+            if (!openSpubId) return;
+            const body = document.getElementById('spubDetailBody');
+            const c = state.spub.find(x => x.id === openSpubId);
+            if (!c) { closeSpubDetail(); return; }
+            // Jangan timpa input yang sedang ditaip (contoh: kemas kini dari terminal lain).
+            const ae = document.activeElement;
+            if (!force && ae && body.contains(ae) && (ae.tagName === 'INPUT' || ae.tagName === 'TEXTAREA')) return;
+
+            const today = todayKey();
+            const myAlerts = computeSpubAlerts([c], today);
+            const opts = r => Object.entries(SPUB_LABELS[c.direction] || SPUB_LABELS.IN)
+                .map(([k, v]) => `<option value="${k}" ${r.status === k ? 'selected' : ''}>${esc(v)}</option>`).join('');
+            const verb = verbFor(c.direction);
+            const rowsHtml = (c.schedule || []).map((r, i) => {
+                const indentBy = addDaysKey(r.dueDate, -(Number.isFinite(c.leadDays) ? c.leadDays : 14));
+                const overdue = !SPUB_DONE.includes(r.status) && today > r.dueDate;
+                return `<tr class="${overdue ? 'bg-rose-50' : ''}">
+                    <td class="p-2 font-black">${r.no}</td>
+                    <td class="p-2 whitespace-nowrap">${fmtDate(r.periodStart)} - ${fmtDate(r.periodEnd)}</td>
+                    <td class="p-2 whitespace-nowrap text-slate-500">${SPUB_DONE.includes(r.status) ? '-' : `${verb} sebelum ${fmtDate(indentBy)}`}</td>
+                    <td class="p-2"><select data-row="${i}" data-field="status" aria-label="Status bulan ${r.no}" class="rounded-lg border border-sky-200 text-xs font-bold px-2 py-1.5 ${rowBadgeClass(r.status)}" ${c.status !== 'AKTIF' ? 'disabled' : ''}>${opts(r)}</select></td>
+                    <td class="p-2"><input type="text" data-row="${i}" data-field="remarks" value="${esc(r.remarks || '')}" aria-label="Catatan bulan ${r.no}" placeholder="cth: guna stok sendiri" class="w-full min-w-[160px] rounded-lg border border-sky-200 px-2 py-1.5 text-xs outline-none focus:ring-2 focus:ring-sky-500" ${c.status !== 'AKTIF' ? 'disabled' : ''}></td>
+                </tr>`;
+            }).join('');
+
+            const d = c.appointmentDate ? diffDays(today, c.appointmentDate) : null;
+            const closeBlock = c.status === 'AKTIF' ? `
+                <div class="border-t border-sky-100 pt-4 space-y-3">
+                    <h4 class="text-xs font-black text-slate-900 uppercase tracking-wide">Tutup kes</h4>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                        <label class="block text-xs font-bold text-slate-700">Keputusan
+                            <select id="spubCloseOutcome" class="mt-1 w-full rounded-xl border border-sky-200 px-3 py-2 text-xs font-semibold bg-white">${Object.entries(CLOSE_OUTCOMES).map(([k, v]) => `<option value="${k}">${v}</option>`).join('')}</select>
+                        </label>
+                        <label class="block text-xs font-bold text-slate-700">Tarikh datang
+                            <input type="date" id="spubCloseVisit" value="${today}" class="mt-1 w-full rounded-xl border border-sky-200 px-3 py-2 text-xs bg-white">
+                        </label>
+                        <label class="block text-xs font-bold text-slate-700">Catatan
+                            <input type="text" id="spubCloseNote" class="mt-1 w-full rounded-xl border border-sky-200 px-3 py-2 text-xs bg-white" placeholder="Pilihan">
+                        </label>
+                    </div>
+                    <button onclick="closeSpubCase()" class="pastel-btn text-white font-bold text-xs px-4 py-2.5 rounded-xl"><i class="fa-solid fa-circle-check mr-1"></i> Tandakan Selesai</button>
+                </div>` : `
+                <div class="border-t border-sky-100 pt-4 space-y-2 text-xs text-slate-600">
+                    <div><span class="font-black text-slate-900">Selesai:</span> ${esc(CLOSE_OUTCOMES[c.outcome] || '-')} · tarikh datang ${fmtDate(c.visitDate)}${c.closeNote ? ' · ' + esc(c.closeNote) : ''}</div>
+                    <button onclick="reopenSpubCase()" class="text-xs font-bold text-sky-700 hover:underline">Buka semula kes</button>
+                </div>`;
+
+            body.innerHTML = `
+                <div class="flex items-start justify-between gap-3">
+                    <div>
+                        <div class="flex items-center gap-2 flex-wrap">
+                            ${c.direction === 'OUT' ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-md bg-violet-100 text-violet-800">SPUB Out</span>' : '<span class="text-[10px] font-black px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-800">SPUB In</span>'}
+                            ${c.status === 'SELESAI' ? '<span class="text-[10px] font-black px-2 py-0.5 rounded-md bg-slate-200 text-slate-700">Selesai</span>' : ''}
+                        </div>
+                        <h3 class="text-lg font-black text-slate-900 mt-1">${esc(c.patientName)}</h3>
+                        <div class="text-xs text-slate-500">${c.mrn ? 'MRN ' + esc(c.mrn) : ''}${c.mrn && c.icLast4 ? ' · ' : ''}${c.icLast4 ? 'IC ****' + esc(c.icLast4) : ''}</div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="openSpubForm(openSpubId)" class="text-xs font-bold px-3 py-2 rounded-xl bg-white border border-sky-200 text-sky-800 hover:bg-sky-50"><i class="fa-solid fa-pen mr-1"></i>Sunting</button>
+                        <button onclick="closeSpubDetail()" class="p-2 text-slate-400 hover:text-slate-700" aria-label="Tutup"><i class="fa-solid fa-xmark text-lg"></i></button>
+                    </div>
+                </div>
+                ${myAlerts.length ? `<div class="flex flex-wrap gap-1.5">${myAlerts.map(alertChip).join('')}</div>` : ''}
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
+                    <div><div class="text-slate-500">${c.direction === 'OUT' ? 'Dirujuk ke' : 'PTj'}</div><div class="font-bold text-slate-900">${esc(c.ptj || '-')}</div><div class="text-slate-500">${esc(c.ptjState || '')}</div></div>
+                    <div><div class="text-slate-500">No. SPUB R1</div><div class="font-bold text-slate-900">${esc(c.r1No || '-')}</div></div>
+                    <div><div class="text-slate-500">${c.direction === 'OUT' ? 'Bekalan awal dihantar' : 'Stok awal diterima'}</div><div class="font-bold text-slate-900">${fmtDate(c.receivedDate)}</div></div>
+                    <div><div class="text-slate-500">Temujanji doktor</div><div class="font-bold text-slate-900">${fmtDate(c.appointmentDate)}</div><div class="${d !== null && d < 0 ? 'text-rose-600' : 'text-slate-500'}">${d === null ? '' : d >= 0 ? d + ' hari lagi' : 'lepas ' + (-d) + ' hari'}</div></div>
+                </div>
+                ${c.contact ? `<div class="text-xs text-slate-600"><i class="fa-solid fa-phone text-sky-500"></i> ${esc(c.contact)}</div>` : ''}
+                <div>
+                    <h4 class="text-xs font-black text-slate-900 uppercase tracking-wide mb-2">Ubat & baki</h4>
+                    <div class="overflow-x-auto rounded-xl border border-sky-100 bg-white/70">
+                        <table class="w-full text-xs text-left"><thead class="bg-sky-100/70 text-sky-950 font-extrabold"><tr><th class="p-2">Ubat</th><th class="p-2">Baki qty</th><th class="p-2">Catatan</th></tr></thead>
+                        <tbody class="divide-y divide-sky-100">${(c.drugs || []).map(x => `<tr><td class="p-2 font-semibold">${esc(x.name)}</td><td class="p-2">${esc(x.balanceQty || '-')}</td><td class="p-2 text-slate-500">${esc(x.note || '')}</td></tr>`).join('')}</tbody></table>
+                    </div>
+                </div>
+                <div>
+                    <h4 class="text-xs font-black text-slate-900 uppercase tracking-wide mb-2">Senarai semak bulanan</h4>
+                    <div class="overflow-x-auto rounded-xl border border-sky-100 bg-white/70">
+                        <table class="w-full text-xs text-left"><thead class="bg-sky-100/70 text-sky-950 font-extrabold"><tr><th class="p-2">Bil</th><th class="p-2">Tempoh bekalan</th><th class="p-2">Tindakan</th><th class="p-2">Status</th><th class="p-2">Catatan</th></tr></thead>
+                        <tbody class="divide-y divide-sky-100">${rowsHtml}</tbody></table>
+                    </div>
+                </div>
+                ${c.remarks ? `<div class="text-xs text-slate-600"><span class="font-black text-slate-900">Catatan kes:</span> ${esc(c.remarks)}</div>` : ''}
+                ${closeBlock}
+                <div class="pt-1 text-right"><button onclick="deleteSpubCase()" class="text-[11px] text-rose-600 hover:underline">Padam kes (admin)</button></div>`;
+        }
+
+        function onSpubDetailChange(e) {
+            const el = e.target;
+            if (!el.dataset || el.dataset.row === undefined) return;
+            const c = state.spub.find(x => x.id === openSpubId);
+            if (!c || c.status !== 'AKTIF') return;
+            const row = c.schedule[parseInt(el.dataset.row, 10)];
+            if (!row) return;
+            row[el.dataset.field] = el.value;
+            row.updatedAt = iso();
+            persistSpub(c);
+            renderSpubViews();
+            renderSpubDetail(true);
+            updateSpubLookup();
+            renderCounterControlPanel();
+        }
+
+        function closeSpubCase() {
+            const c = state.spub.find(x => x.id === openSpubId);
+            if (!c) return;
+            const pending = (c.schedule || []).filter(r => !SPUB_DONE.includes(r.status)).length;
+            if (pending && !confirm(`Masih ada ${pending} bulan belum selesai. Tutup kes juga?`)) return;
+            c.status = 'SELESAI';
+            c.outcome = document.getElementById('spubCloseOutcome').value;
+            c.visitDate = document.getElementById('spubCloseVisit').value || todayKey();
+            c.closeNote = document.getElementById('spubCloseNote').value.trim();
+            c.closedAt = iso();
+            persistSpub(c);
+            renderSpubViews();
+            updateSpubLookup();
+            renderCounterControlPanel();
+            renderWaitingQueueList();
+        }
+
+        function reopenSpubCase() {
+            const c = state.spub.find(x => x.id === openSpubId);
+            if (!c) return;
+            c.status = 'AKTIF'; c.closedAt = null; c.outcome = null; c.visitDate = null;
+            persistSpub(c);
+            renderSpubViews();
+            updateSpubLookup();
+        }
+
+        async function deleteSpubCase() {
+            if (!isAdminUnlocked) { alert("Padam kes memerlukan akses pentadbir. Buka tab Tetapan & Cloud dahulu."); return; }
+            const c = state.spub.find(x => x.id === openSpubId);
+            if (!c || !confirm(`Padam kes SPUB ${c.patientName} secara kekal?`)) return;
+            state.spub = state.spub.filter(x => x.id !== c.id);
+            saveLocal();
+            if (fbReady()) {
+                try {
+                    const { doc, deleteDoc } = window.FirebaseModule;
+                    await deleteDoc(doc(firebaseDb, COL_SPUB, c.id));
+                } catch (e) { alert("Padam di cloud gagal: " + e.message); }
+            }
+            closeSpubDetail();
+            renderSpubViews();
+            updateSpubLookup();
+            renderCounterControlPanel();
         }
     </script>
 </body>
